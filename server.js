@@ -47,7 +47,7 @@ async function checkIfUserExists(username) {
     }
 }
 
-// Funkcja do zapisywania logu (POPRAWIONA - używa append)
+// FUNKCJA DO ZAPISYWANIA LOGU - NA PEWNO DODA NOWĄ LINIĘ
 async function saveLogToSFTP(logEntry) {
     const sftp = new Client();
 
@@ -61,76 +61,50 @@ async function saveLogToSFTP(logEntry) {
 
         const remotePath = '/users_socialtool/user_logs.txt';
         
-        // SPRAWDŹ CZY PLIK ISTNIEJE - jeśli nie, utwórz go
+        let existingContent = '';
+        
+        // 1. SPRÓBUJ POBRAĆ ISTNIEJĄCY PLIK
         try {
-            await sftp.get(remotePath);
+            const fileContent = await sftp.get(remotePath);
+            existingContent = fileContent.toString();
+            console.log('Istniejąca zawartość:', existingContent);
         } catch (error) {
-            // Plik nie istnieje - utwórz pusty plik
-            console.log('Tworzę nowy plik...');
-            await sftp.put(Buffer.from(''), remotePath);
+            // Plik nie istnieje - zaczynamy od pustego
+            console.log('Plik nie istnieje, tworzę nowy...');
+            existingContent = '';
         }
 
-        // DODAJ NOWĄ LINIĘ NA KONIEC PLIKU
-        await sftp.append(Buffer.from(logEntry), remotePath);
+        // 2. DODAJ NOWĄ LINIĘ DO ISTNIEJĄCEJ ZAWARTOŚCI
+        let newContent;
+        if (existingContent.trim() === '') {
+            // Jeśli plik jest pusty - dodaj pierwszą linię
+            newContent = logEntry;
+        } else {
+            // Jeśli plik ma już dane - dodaj nową linię na końcu
+            // Upewnij się że ostatnia linia ma znak nowej linii
+            if (!existingContent.endsWith('\n')) {
+                existingContent += '\n';
+            }
+            newContent = existingContent + logEntry;
+        }
+
+        console.log('Nowa zawartość do zapisania:', newContent);
+        
+        // 3. ZAPISZ CAŁY PLIK Z DODANĄ NOWĄ LINIĄ
+        await sftp.put(Buffer.from(newContent), remotePath);
         
         await sftp.end();
-        console.log('Dodano nowy log:', logEntry);
+        console.log('✅ Pomyślnie dodano nowy log:', logEntry.trim());
         return true;
 
     } catch (error) {
-        console.error('Błąd SFTP:', error);
+        console.error('❌ Błąd SFTP:', error);
         return false;
     }
 }
 
-// Funkcja do znajdowania wolnej linii
-async function findAvailableLine() {
-    const sftp = new Client();
-    
-    try {
-        await sftp.connect({
-            host: 'eu9r-free.falixserver.net',
-            port: 4483,
-            username: '7vadveg.75387402',
-            password: 'vVftg4ynf'
-        });
-
-        const remotePath = '/users_socialtool/user_logs.txt';
-        
-        try {
-            const fileContent = await sftp.get(remotePath);
-            const logs = fileContent.toString();
-            const lines = logs.split('\n').filter(line => line.trim());
-            
-            await sftp.end();
-            
-            // Znajdź pierwszą pustą linię lub zwróć koniec pliku
-            if (lines.length === 0) {
-                return 1; // Pierwsza linia
-            }
-            
-            // Sprawdź czy ostatnia linia jest pusta
-            const lastLine = lines[lines.length - 1];
-            if (!lastLine.trim()) {
-                return lines.length;
-            }
-            
-            // Zwróć następną linię po ostatniej
-            return lines.length + 1;
-            
-        } catch (error) {
-            // Plik nie istnieje - pierwsza linia
-            await sftp.end();
-            return 1;
-        }
-
-    } catch (error) {
-        console.error('Błąd przy szukaniu wolnej linii:', error);
-        return 1;
-    }
-}
-
 app.post('/save-log', async (req, res) => {
+    console.log('=== NOWA REJESTRACJA ===');
     console.log('Otrzymano żądanie:', req.body);
     
     const { username, password, ip } = req.body;
@@ -140,32 +114,35 @@ app.post('/save-log', async (req, res) => {
     }
 
     // Sprawdź czy użytkownik już istnieje
+    console.log('Sprawdzanie czy użytkownik istnieje...');
     const userExists = await checkIfUserExists(username);
     if (userExists) {
+        console.log('❌ Użytkownik już istnieje:', username);
         return res.json({ success: false, message: 'Nazwa użytkownika jest już zajęta' });
     }
 
+    console.log('✅ Użytkownik nie istnieje, tworzenie logu...');
     const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
     const logEntry = `${timestamp} | User: ${username}| Password: ${password} | IP: ${ip} | Version: 2.0\n`;
 
-    console.log('Tworzenie logu:', logEntry);
-
-    // Znajdź wolną linię (dla debugowania)
-    const availableLine = await findAvailableLine();
-    console.log(`Wolna linia: ${availableLine}`);
+    console.log('Nowy log:', logEntry);
 
     // Zapisz do SFTP
+    console.log('Zapisywanie do SFTP...');
     const saveResult = await saveLogToSFTP(logEntry);
 
     if (saveResult) {
+        console.log('🎉 Rejestracja udana dla:', username);
         res.json({ 
             success: true, 
-            message: 'Rejestracja udana!',
-            line: availableLine 
+            message: 'Rejestracja udana!' 
         });
     } else {
+        console.log('💥 Błąd rejestracji dla:', username);
         res.json({ success: false, message: 'Błąd podczas rejestracji' });
     }
+    
+    console.log('=== KONIEC REJESTRACJI ===');
 });
 
 app.get('/', (req, res) => {
@@ -174,6 +151,7 @@ app.get('/', (req, res) => {
 
 // Funkcja do sprawdzania zawartości pliku
 app.get('/check-logs', async (req, res) => {
+    console.log('=== SPRAWDZANIE LOGÓW ===');
     const sftp = new Client();
     
     try {
@@ -193,16 +171,25 @@ app.get('/check-logs', async (req, res) => {
             
             await sftp.end();
             
+            console.log('Znalezione linie:', lines);
+            
             res.json({ 
                 success: true, 
                 logs: logs,
                 lines: lines,
                 totalLines: lines.length,
-                fileInfo: `Plik zawiera ${lines.length} wpisów`
+                fileInfo: `Plik zawiera ${lines.length} wpisów`,
+                rawContent: logs
             });
         } catch (error) {
+            console.log('Plik nie istnieje lub jest pusty');
             await sftp.end();
-            res.json({ success: false, error: 'Plik nie istnieje lub jest pusty' });
+            res.json({ 
+                success: false, 
+                error: 'Plik nie istnieje lub jest pusty',
+                lines: [],
+                totalLines: 0
+            });
         }
 
     } catch (error) {
@@ -211,8 +198,8 @@ app.get('/check-logs', async (req, res) => {
     }
 });
 
-// Funkcja do czyszczenia pliku (TYLKO DO TESTOW)
-app.delete('/clear-logs', async (req, res) => {
+// Funkcja do wyświetlenia pełnej zawartości pliku
+app.get('/view-file', async (req, res) => {
     const sftp = new Client();
     
     try {
@@ -224,17 +211,35 @@ app.delete('/clear-logs', async (req, res) => {
         });
 
         const remotePath = '/users_socialtool/user_logs.txt';
-        await sftp.put(Buffer.from(''), remotePath);
         
-        await sftp.end();
-        res.json({ success: true, message: 'Plik wyczyszczony' });
+        try {
+            const fileContent = await sftp.get(remotePath);
+            const logs = fileContent.toString();
+            
+            await sftp.end();
+            
+            // Zwróć jako tekst do łatwego przeglądania
+            res.set('Content-Type', 'text/plain');
+            res.send(`=== ZAWARTOŚĆ PLIKU user_logs.txt ===\n\n${logs}\n\n=== KONIEC PLIKU ===\nLiczba znaków: ${logs.length}\nLiczba linii: ${logs.split('\n').length}`);
+        } catch (error) {
+            await sftp.end();
+            res.set('Content-Type', 'text/plain');
+            res.send('=== PLIK JEST PUSTY LUB NIE ISTNIEJE ===');
+        }
+
     } catch (error) {
         console.error('Błąd:', error);
-        res.json({ success: false, error: error.message });
+        res.set('Content-Type', 'text/plain');
+        res.send('Błąd: ' + error.message);
     }
 });
 
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`📊 Endpoints:`);
+    console.log(`   GET  / - Status API`);
+    console.log(`   POST /save-log - Rejestracja użytkownika`);
+    console.log(`   GET  /check-logs - Sprawdź logi (JSON)`);
+    console.log(`   GET  /view-file - Zobacz plik (tekst)`);
 });
