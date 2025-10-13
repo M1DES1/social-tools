@@ -47,7 +47,7 @@ async function checkIfUserExists(username) {
     }
 }
 
-// FUNKCJA DO ZAPISYWANIA LOGU - NA PEWNO DODA NOWĄ LINIĘ
+// Funkcja do zapisywania logu - DODAJE NOWĄ LINIĘ
 async function saveLogToSFTP(logEntry) {
     const sftp = new Client();
 
@@ -63,18 +63,18 @@ async function saveLogToSFTP(logEntry) {
         
         let existingContent = '';
         
-        // 1. SPRÓBUJ POBRAĆ ISTNIEJĄCY PLIK
+        // 1. Pobierz istniejący plik
         try {
             const fileContent = await sftp.get(remotePath);
             existingContent = fileContent.toString();
-            console.log('Istniejąca zawartość:', existingContent);
+            console.log('📄 Istniejąca zawartość:', existingContent);
         } catch (error) {
             // Plik nie istnieje - zaczynamy od pustego
-            console.log('Plik nie istnieje, tworzę nowy...');
+            console.log('📄 Plik nie istnieje, tworzę nowy...');
             existingContent = '';
         }
 
-        // 2. DODAJ NOWĄ LINIĘ DO ISTNIEJĄCEJ ZAWARTOŚCI
+        // 2. Dodaj nową linię do istniejącej zawartości
         let newContent;
         if (existingContent.trim() === '') {
             // Jeśli plik jest pusty - dodaj pierwszą linię
@@ -88,9 +88,9 @@ async function saveLogToSFTP(logEntry) {
             newContent = existingContent + logEntry;
         }
 
-        console.log('Nowa zawartość do zapisania:', newContent);
+        console.log('💾 Nowa zawartość do zapisania:', newContent);
         
-        // 3. ZAPISZ CAŁY PLIK Z DODANĄ NOWĄ LINIĄ
+        // 3. Zapisz cały plik z dodaną nową linią
         await sftp.put(Buffer.from(newContent), remotePath);
         
         await sftp.end();
@@ -104,8 +104,8 @@ async function saveLogToSFTP(logEntry) {
 }
 
 app.post('/save-log', async (req, res) => {
-    console.log('=== NOWA REJESTRACJA ===');
-    console.log('Otrzymano żądanie:', req.body);
+    console.log('=== 🆕 NOWA REJESTRACJA ===');
+    console.log('📨 Otrzymano żądanie:', req.body);
     
     const { username, password, ip } = req.body;
     
@@ -114,7 +114,7 @@ app.post('/save-log', async (req, res) => {
     }
 
     // Sprawdź czy użytkownik już istnieje
-    console.log('Sprawdzanie czy użytkownik istnieje...');
+    console.log('🔍 Sprawdzanie czy użytkownik istnieje...');
     const userExists = await checkIfUserExists(username);
     if (userExists) {
         console.log('❌ Użytkownik już istnieje:', username);
@@ -125,10 +125,10 @@ app.post('/save-log', async (req, res) => {
     const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
     const logEntry = `${timestamp} | User: ${username}| Password: ${password} | IP: ${ip} | Version: 2.0\n`;
 
-    console.log('Nowy log:', logEntry);
+    console.log('📝 Nowy log:', logEntry);
 
     // Zapisz do SFTP
-    console.log('Zapisywanie do SFTP...');
+    console.log('💾 Zapisywanie do SFTP...');
     const saveResult = await saveLogToSFTP(logEntry);
 
     if (saveResult) {
@@ -142,16 +142,25 @@ app.post('/save-log', async (req, res) => {
         res.json({ success: false, message: 'Błąd podczas rejestracji' });
     }
     
-    console.log('=== KONIEC REJESTRACJI ===');
+    console.log('=== ✅ KONIEC REJESTRACJI ===\n');
 });
 
 app.get('/', (req, res) => {
-    res.json({ message: 'SFTP Logger API działa!', status: 'online' });
+    res.json({ 
+        message: 'SFTP Logger API działa!', 
+        status: 'online',
+        endpoints: {
+            'POST /save-log': 'Rejestracja użytkownika',
+            'GET /check-logs': 'Sprawdź logi (JSON)',
+            'GET /view-file': 'Zobacz plik (tekst)',
+            'GET /check-user/:username': 'Sprawdź czy użytkownik istnieje'
+        }
+    });
 });
 
 // Funkcja do sprawdzania zawartości pliku
 app.get('/check-logs', async (req, res) => {
-    console.log('=== SPRAWDZANIE LOGÓW ===');
+    console.log('=== 📊 SPRAWDZANIE LOGÓW ===');
     const sftp = new Client();
     
     try {
@@ -171,7 +180,7 @@ app.get('/check-logs', async (req, res) => {
             
             await sftp.end();
             
-            console.log('Znalezione linie:', lines);
+            console.log('📋 Znalezione linie:', lines);
             
             res.json({ 
                 success: true, 
@@ -182,7 +191,7 @@ app.get('/check-logs', async (req, res) => {
                 rawContent: logs
             });
         } catch (error) {
-            console.log('Plik nie istnieje lub jest pusty');
+            console.log('📭 Plik nie istnieje lub jest pusty');
             await sftp.end();
             res.json({ 
                 success: false, 
@@ -193,7 +202,7 @@ app.get('/check-logs', async (req, res) => {
         }
 
     } catch (error) {
-        console.error('Błąd:', error);
+        console.error('❌ Błąd:', error);
         res.json({ success: false, error: error.message });
     }
 });
@@ -228,18 +237,33 @@ app.get('/view-file', async (req, res) => {
         }
 
     } catch (error) {
-        console.error('Błąd:', error);
+        console.error('❌ Błąd:', error);
         res.set('Content-Type', 'text/plain');
         res.send('Błąd: ' + error.message);
     }
 });
 
+// Funkcja do sprawdzenia czy konkretny użytkownik istnieje
+app.get('/check-user/:username', async (req, res) => {
+    const username = req.params.username;
+    console.log(`🔍 Sprawdzanie użytkownika: ${username}`);
+    
+    const userExists = await checkIfUserExists(username);
+    
+    res.json({
+        username: username,
+        exists: userExists,
+        message: userExists ? 'Użytkownik istnieje' : 'Użytkownik nie istnieje'
+    });
+});
+
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`📊 Endpoints:`);
+    console.log(`📊 Dostępne endpointy:`);
     console.log(`   GET  / - Status API`);
     console.log(`   POST /save-log - Rejestracja użytkownika`);
     console.log(`   GET  /check-logs - Sprawdź logi (JSON)`);
     console.log(`   GET  /view-file - Zobacz plik (tekst)`);
+    console.log(`   GET  /check-user/:username - Sprawdź użytkownika`);
 });
