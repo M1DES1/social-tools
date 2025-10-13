@@ -20,15 +20,11 @@ async function checkIfUserExists(username) {
 
         const remotePath = '/users_socialtool/user_logs.txt';
         
-        // Sprawdź czy plik istnieje
         try {
             const fileContent = await sftp.get(remotePath);
             const logs = fileContent.toString();
-            
-            // Sprawdź czy username już istnieje w logach
             const userExists = logs.includes(`User: ${username}|`);
             await sftp.end();
-            
             return userExists;
         } catch (error) {
             // Plik nie istnieje - pierwszy użytkownik
@@ -42,7 +38,7 @@ async function checkIfUserExists(username) {
     }
 }
 
-// Funkcja do zapisywania logu
+// Funkcja do zapisywania logu (POPRAWIONA)
 async function saveLogToSFTP(logEntry) {
     const sftp = new Client();
 
@@ -55,9 +51,26 @@ async function saveLogToSFTP(logEntry) {
         });
 
         const remotePath = '/users_socialtool/user_logs.txt';
-        await sftp.append(Buffer.from(logEntry), remotePath);
+        
+        // SPRAWDŹ CZY PLIK ISTNIEJE
+        let existingContent = '';
+        try {
+            existingContent = await sftp.get(remotePath);
+            existingContent = existingContent.toString();
+        } catch (error) {
+            // Plik nie istnieje - tworzymy nowy
+            console.log('Plik nie istnieje, tworzę nowy...');
+            existingContent = '';
+        }
+
+        // DODAJ NOWY WPIS DO ISTNIEJĄCEJ ZAWARTOŚCI
+        const newContent = existingContent + logEntry;
+        
+        // ZAPISZ CAŁY PLIK (append nie działał poprawnie)
+        await sftp.put(Buffer.from(newContent), remotePath);
         
         await sftp.end();
+        console.log('Zapisano log:', logEntry);
         return true;
 
     } catch (error) {
@@ -98,6 +111,36 @@ app.post('/save-log', async (req, res) => {
 
 app.get('/', (req, res) => {
     res.json({ message: 'SFTP Logger API działa!', status: 'online' });
+});
+
+// Nowa funkcja do sprawdzania zawartości pliku (do debugowania)
+app.get('/check-logs', async (req, res) => {
+    const sftp = new Client();
+    
+    try {
+        await sftp.connect({
+            host: 'eu9r-free.falixserver.net',
+            port: 4483,
+            username: '7vadveg.75387402',
+            password: 'vVftg4ynf'
+        });
+
+        const remotePath = '/users_socialtool/user_logs.txt';
+        
+        try {
+            const fileContent = await sftp.get(remotePath);
+            const logs = fileContent.toString();
+            await sftp.end();
+            res.json({ success: true, logs: logs, lines: logs.split('\n').filter(line => line.trim()) });
+        } catch (error) {
+            await sftp.end();
+            res.json({ success: false, error: 'Plik nie istnieje lub jest pusty' });
+        }
+
+    } catch (error) {
+        console.error('Błąd:', error);
+        res.json({ success: false, error: error.message });
+    }
 });
 
 const PORT = process.env.PORT || 10000;
