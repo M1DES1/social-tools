@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rejestracja użytkownika</title>
+    <title>Rejestracja - Social Tools</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
-        <h1>Rejestracja</h1>
+        <h1>Rejestracja - Social Tools</h1>
         <form id="registrationForm">
             <div class="form-group">
                 <label for="username">Nazwa użytkownika:</label>
@@ -22,25 +22,15 @@
                 <label for="confirmPassword">Potwierdź hasło:</label>
                 <input type="password" id="confirmPassword" name="confirmPassword" required>
             </div>
-            <button type="submit">Zarejestruj się</button>
+            <button type="submit">Zarejestruj się i pobierz</button>
         </form>
         
         <div class="loading" id="loading">
             <div class="spinner"></div>
-            <p>Trwa rejestracja i zapisywanie logów...</p>
+            <p>Trwa rejestracja...</p>
         </div>
         
         <div class="message" id="message"></div>
-        
-        <!-- Dodatkowy przycisk do przeglądania logów -->
-        <div style="margin-top: 20px; text-align: center;">
-            <button type="button" onclick="showStoredLogs()" style="background: #6c757d; margin-top: 10px;">
-                Pokaż logi (konsola)
-            </button>
-            <button type="button" onclick="clearStoredLogs()" style="background: #dc3545; margin-top: 10px;">
-                Wyczyść logi
-            </button>
-        </div>
     </div>
 
     <script src="script.js"></script>
