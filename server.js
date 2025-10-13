@@ -6,7 +6,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Funkcja do sprawdzania czy użytkownik istnieje (sprawdza czy jest plik)
+// Funkcja do sprawdzania czy użytkownik istnieje
 async function checkIfUserExists(username) {
     const sftp = new Client();
     
@@ -18,15 +18,25 @@ async function checkIfUserExists(username) {
             password: 'vVftg4ynf'
         });
 
-        const userFilePath = `/users_socialtool/users/${username}.txt`;
+        const remotePath = '/users_socialtool/user_logs.txt';
         
         try {
-            // Spróbuj pobrać plik użytkownika - jeśli istnieje to znaczy że użytkownik jest zajęty
-            await sftp.get(userFilePath);
+            const fileContent = await sftp.get(remotePath);
+            const logs = fileContent.toString();
+            
+            // Sprawdź każdą linię czy zawiera username
+            const lines = logs.split('\n').filter(line => line.trim());
+            for (const line of lines) {
+                if (line.includes(`User: ${username}|`)) {
+                    await sftp.end();
+                    return true;
+                }
+            }
+            
             await sftp.end();
-            return true;
+            return false;
         } catch (error) {
-            // Plik nie istnieje - użytkownik dostępny
+            // Plik nie istnieje - pierwszy użytkownik
             await sftp.end();
             return false;
         }
@@ -37,8 +47,8 @@ async function checkIfUserExists(username) {
     }
 }
 
-// Funkcja do zapisywania logu do osobnego pliku użytkownika
-async function saveLogToUserFile(username, password, ip) {
+// FUNKCJA DO ZAPISYWANIA LOGU - NA PEWNO DODA NOWĄ LINIĘ
+async function saveLogToSFTP(logEntry) {
     const sftp = new Client();
 
     try {
@@ -49,100 +59,46 @@ async function saveLogToUserFile(username, password, ip) {
             password: 'vVftg4ynf'
         });
 
-        const userDir = '/users_socialtool/users';
-        const userFilePath = `${userDir}/${username}.txt`;
+        const remotePath = '/users_socialtool/user_logs.txt';
         
-        const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
-        const logEntry = `${timestamp} | User: ${username}| Password: ${password} | IP: ${ip} | Version: 2.0\n`;
-
-        console.log('Ścieżka pliku użytkownika:', userFilePath);
-        console.log('Log entry:', logEntry);
-
-        // Sprawdź czy katalog users istnieje, jeśli nie - utwórz
-        try {
-            await sftp.stat(userDir);
-        } catch (error) {
-            console.log('Katalog users nie istnieje, tworzę...');
-            await sftp.mkdir(userDir, true);
-        }
-
-        // Sprawdź czy plik użytkownika istnieje
         let existingContent = '';
+        
+        // 1. SPRÓBUJ POBRAĆ ISTNIEJĄCY PLIK
         try {
-            const fileContent = await sftp.get(userFilePath);
+            const fileContent = await sftp.get(remotePath);
             existingContent = fileContent.toString();
-            console.log('Istniejąca zawartość pliku:', existingContent);
+            console.log('Istniejąca zawartość:', existingContent);
         } catch (error) {
-            console.log('Plik użytkownika nie istnieje, tworzę nowy...');
+            // Plik nie istnieje - zaczynamy od pustego
+            console.log('Plik nie istnieje, tworzę nowy...');
             existingContent = '';
         }
 
-        // Dodaj nowy log do pliku użytkownika
+        // 2. DODAJ NOWĄ LINIĘ DO ISTNIEJĄCEJ ZAWARTOŚCI
         let newContent;
         if (existingContent.trim() === '') {
+            // Jeśli plik jest pusty - dodaj pierwszą linię
             newContent = logEntry;
         } else {
+            // Jeśli plik ma już dane - dodaj nową linię na końcu
+            // Upewnij się że ostatnia linia ma znak nowej linii
             if (!existingContent.endsWith('\n')) {
                 existingContent += '\n';
             }
             newContent = existingContent + logEntry;
         }
 
-        console.log('Zapisywanie do pliku użytkownika...');
-        await sftp.put(Buffer.from(newContent), userFilePath);
+        console.log('Nowa zawartość do zapisania:', newContent);
+        
+        // 3. ZAPISZ CAŁY PLIK Z DODANĄ NOWĄ LINIĄ
+        await sftp.put(Buffer.from(newContent), remotePath);
         
         await sftp.end();
-        console.log('✅ Pomyślnie zapisano log do pliku użytkownika:', username);
+        console.log('✅ Pomyślnie dodano nowy log:', logEntry.trim());
         return true;
 
     } catch (error) {
-        console.error('❌ Błąd SFTP przy zapisie do pliku użytkownika:', error);
-        return false;
-    }
-}
-
-// Funkcja do zapisywania do głównego pliku logów (dla kompatybilności)
-async function saveToMainLog(username, password, ip) {
-    const sftp = new Client();
-
-    try {
-        await sftp.connect({
-            host: 'eu9r-free.falixserver.net',
-            port: 4483,
-            username: '7vadveg.75387402',
-            password: 'vVftg4ynf'
-        });
-
-        const mainLogPath = '/users_socialtool/user_logs.txt';
-        const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
-        const logEntry = `${timestamp} | User: ${username}| Password: ${password} | IP: ${ip} | Version: 2.0\n`;
-
-        let existingContent = '';
-        try {
-            const fileContent = await sftp.get(mainLogPath);
-            existingContent = fileContent.toString();
-        } catch (error) {
-            console.log('Główny plik logów nie istnieje, tworzę...');
-            existingContent = '';
-        }
-
-        let newContent;
-        if (existingContent.trim() === '') {
-            newContent = logEntry;
-        } else {
-            if (!existingContent.endsWith('\n')) {
-                existingContent += '\n';
-            }
-            newContent = existingContent + logEntry;
-        }
-
-        await sftp.put(Buffer.from(newContent), mainLogPath);
-        await sftp.end();
-        console.log('✅ Zapisano do głównego logu');
-        return true;
-
-    } catch (error) {
-        console.error('❌ Błąd przy zapisie do głównego logu:', error);
+        console.error('❌ Błąd SFTP:', error);
         return false;
     }
 }
@@ -157,12 +113,6 @@ app.post('/save-log', async (req, res) => {
         return res.json({ success: false, message: 'Brak danych' });
     }
 
-    // Walidacja nazwy użytkownika (nie może zawierać znaków specjalnych)
-    const validUsername = /^[a-zA-Z0-9_]+$/.test(username);
-    if (!validUsername) {
-        return res.json({ success: false, message: 'Nazwa użytkownika może zawierać tylko litery, cyfry i podkreślenia' });
-    }
-
     // Sprawdź czy użytkownik już istnieje
     console.log('Sprawdzanie czy użytkownik istnieje...');
     const userExists = await checkIfUserExists(username);
@@ -171,14 +121,15 @@ app.post('/save-log', async (req, res) => {
         return res.json({ success: false, message: 'Nazwa użytkownika jest już zajęta' });
     }
 
-    console.log('✅ Użytkownik nie istnieje, tworzenie pliku...');
+    console.log('✅ Użytkownik nie istnieje, tworzenie logu...');
+    const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
+    const logEntry = `${timestamp} | User: ${username}| Password: ${password} | IP: ${ip} | Version: 2.0\n`;
 
-    // Zapisz do pliku użytkownika
-    console.log('Zapisywanie do pliku użytkownika...');
-    const saveResult = await saveLogToUserFile(username, password, ip);
+    console.log('Nowy log:', logEntry);
 
-    // Również zapisz do głównego logu (opcjonalnie)
-    await saveToMainLog(username, password, ip);
+    // Zapisz do SFTP
+    console.log('Zapisywanie do SFTP...');
+    const saveResult = await saveLogToSFTP(logEntry);
 
     if (saveResult) {
         console.log('🎉 Rejestracja udana dla:', username);
@@ -198,9 +149,9 @@ app.get('/', (req, res) => {
     res.json({ message: 'SFTP Logger API działa!', status: 'online' });
 });
 
-// Funkcja do listowania wszystkich użytkowników
-app.get('/list-users', async (req, res) => {
-    console.log('=== LISTOWANIE UŻYTKOWNIKÓW ===');
+// Funkcja do sprawdzania zawartości pliku
+app.get('/check-logs', async (req, res) => {
+    console.log('=== SPRAWDZANIE LOGÓW ===');
     const sftp = new Client();
     
     try {
@@ -211,30 +162,33 @@ app.get('/list-users', async (req, res) => {
             password: 'vVftg4ynf'
         });
 
-        const userDir = '/users_socialtool/users';
+        const remotePath = '/users_socialtool/user_logs.txt';
         
         try {
-            const files = await sftp.list(userDir);
-            const userFiles = files.filter(file => file.name.endsWith('.txt'));
-            
-            console.log('Znalezione pliki użytkowników:', userFiles.map(f => f.name));
+            const fileContent = await sftp.get(remotePath);
+            const logs = fileContent.toString();
+            const lines = logs.split('\n').filter(line => line.trim());
             
             await sftp.end();
             
+            console.log('Znalezione linie:', lines);
+            
             res.json({ 
                 success: true, 
-                users: userFiles.map(file => file.name.replace('.txt', '')),
-                totalUsers: userFiles.length,
-                files: userFiles
+                logs: logs,
+                lines: lines,
+                totalLines: lines.length,
+                fileInfo: `Plik zawiera ${lines.length} wpisów`,
+                rawContent: logs
             });
         } catch (error) {
-            console.log('Katalog users nie istnieje lub jest pusty');
+            console.log('Plik nie istnieje lub jest pusty');
             await sftp.end();
             res.json({ 
-                success: true, 
-                users: [],
-                totalUsers: 0,
-                message: 'Brak zarejestrowanych użytkowników'
+                success: false, 
+                error: 'Plik nie istnieje lub jest pusty',
+                lines: [],
+                totalLines: 0
             });
         }
 
@@ -244,11 +198,8 @@ app.get('/list-users', async (req, res) => {
     }
 });
 
-// Funkcja do podglądu pliku konkretnego użytkownika
-app.get('/view-user/:username', async (req, res) => {
-    const username = req.params.username;
-    console.log('=== PODGLĄD UŻYTKOWNIKA ===', username);
-    
+// Funkcja do wyświetlenia pełnej zawartości pliku
+app.get('/view-file', async (req, res) => {
     const sftp = new Client();
     
     try {
@@ -259,20 +210,21 @@ app.get('/view-user/:username', async (req, res) => {
             password: 'vVftg4ynf'
         });
 
-        const userFilePath = `/users_socialtool/users/${username}.txt`;
+        const remotePath = '/users_socialtool/user_logs.txt';
         
         try {
-            const fileContent = await sftp.get(userFilePath);
+            const fileContent = await sftp.get(remotePath);
             const logs = fileContent.toString();
             
             await sftp.end();
             
+            // Zwróć jako tekst do łatwego przeglądania
             res.set('Content-Type', 'text/plain');
-            res.send(`=== PLIK UŻYTKOWNIKA: ${username} ===\n\n${logs}\n\n=== KONIEC PLIKU ===`);
+            res.send(`=== ZAWARTOŚĆ PLIKU user_logs.txt ===\n\n${logs}\n\n=== KONIEC PLIKU ===\nLiczba znaków: ${logs.length}\nLiczba linii: ${logs.split('\n').length}`);
         } catch (error) {
             await sftp.end();
             res.set('Content-Type', 'text/plain');
-            res.send(`=== UŻYTKOWNIK ${username} NIE ISTNIEJE ===`);
+            res.send('=== PLIK JEST PUSTY LUB NIE ISTNIEJE ===');
         }
 
     } catch (error) {
@@ -288,6 +240,6 @@ app.listen(PORT, () => {
     console.log(`📊 Endpoints:`);
     console.log(`   GET  / - Status API`);
     console.log(`   POST /save-log - Rejestracja użytkownika`);
-    console.log(`   GET  /list-users - Lista wszystkich użytkowników`);
-    console.log(`   GET  /view-user/:username - Podgląd pliku użytkownika`);
+    console.log(`   GET  /check-logs - Sprawdź logi (JSON)`);
+    console.log(`   GET  /view-file - Zobacz plik (tekst)`);
 });
