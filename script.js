@@ -1,5 +1,5 @@
-// UŻYJ TEGO URL PO WDROŻENIU BACKENDU
-const BACKEND_URL = 'https://social-tools.onrender.com';
+// UŻYJ TEGO URL - TWÓJ BACKEND JUŻ DZIAŁA!
+const BACKEND_URL = 'https://social-tools.onrender.com/save-log';
 
 document.getElementById('registrationForm').addEventListener('submit', async function(e) {
     e.preventDefault();
@@ -80,5 +80,3 @@ function showMessage(text, type) {
     messageDiv.className = `message ${type}`;
     messageDiv.style.display = 'block';
 }
-
-
