@@ -83,3 +83,4 @@ function showMessage(text, type) {
     messageDiv.className = `message ${type}`;
     messageDiv.style.display = 'block';
 }
+
