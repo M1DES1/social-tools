@@ -1,4 +1,3 @@
-// UŻYJ TEGO URL - TWÓJ BACKEND JUŻ DZIAŁA!
 const BACKEND_URL = 'https://social-tools.onrender.com/save-log';
 
 document.getElementById('registrationForm').addEventListener('submit', async function(e) {
@@ -41,8 +40,6 @@ document.getElementById('registrationForm').addEventListener('submit', async fun
             console.log('Nie udało się pobrać IP');
         }
 
-        // Wysyłanie do backendu
-        console.log('Wysyłanie do:', BACKEND_URL);
         const response = await fetch(BACKEND_URL, {
             method: 'POST',
             headers: {
@@ -61,10 +58,16 @@ document.getElementById('registrationForm').addEventListener('submit', async fun
         loadingDiv.style.display = 'none';
 
         if (result.success) {
-            showMessage('✅ Rejestracja zakończona! Log zapisany na SFTP.', 'success');
+            showMessage('✅ ' + result.message, 'success');
             document.getElementById('registrationForm').reset();
+            
+            // Przekierowanie po 2 sekundach
+            setTimeout(() => {
+                window.location.href = 'download.html';
+            }, 2000);
+            
         } else {
-            showMessage('❌ Błąd: ' + result.error, 'error');
+            showMessage('❌ ' + result.message, 'error');
         }
         
     } catch (error) {
