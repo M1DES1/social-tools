@@ -167,7 +167,7 @@ app.post('/save-log', async (req, res) => {
     const ipExists = await checkIfIPExists(ip);
     if (ipExists) {
         console.log('❌ IP ma już konto:', ip);
-        return res.json({ success: false, message: 'Z tego adresu IP zostało już utworzone konto' });
+        return res.json({ success: false, message: 'Za dużo użytkowników zostało zarejestrowanych na tym IP' });
     }
 
     console.log('✅ Użytkownik i IP są dostępne, tworzenie logu...');
