@@ -47,6 +47,47 @@ async function checkIfUserExists(username) {
     }
 }
 
+// Funkcja do sprawdzania czy IP ma już konto
+async function checkIfIPExists(ip) {
+    const sftp = new Client();
+    
+    try {
+        await sftp.connect({
+            host: 'eu9r-free.falixserver.net',
+            port: 4483,
+            username: '7vadveg.75387402',
+            password: 'vVftg4ynf'
+        });
+
+        const remotePath = '/users_socialtool/user_logs.txt';
+        
+        try {
+            const fileContent = await sftp.get(remotePath);
+            const logs = fileContent.toString();
+            
+            // Sprawdź każdą linię czy zawiera to IP
+            const lines = logs.split('\n').filter(line => line.trim());
+            for (const line of lines) {
+                if (line.includes(`IP: ${ip} `)) {
+                    await sftp.end();
+                    return true;
+                }
+            }
+            
+            await sftp.end();
+            return false;
+        } catch (error) {
+            // Plik nie istnieje - pierwsze IP
+            await sftp.end();
+            return false;
+        }
+
+    } catch (error) {
+        console.error('Błąd przy sprawdzaniu IP:', error);
+        return false;
+    }
+}
+
 // Funkcja do zapisywania logu - DODAJE NOWĄ LINIĘ
 async function saveLogToSFTP(logEntry) {
     const sftp = new Client();
@@ -121,7 +162,15 @@ app.post('/save-log', async (req, res) => {
         return res.json({ success: false, message: 'Nazwa użytkownika jest już zajęta' });
     }
 
-    console.log('✅ Użytkownik nie istnieje, tworzenie logu...');
+    // Sprawdź czy IP ma już konto
+    console.log('🔍 Sprawdzanie czy IP ma już konto...');
+    const ipExists = await checkIfIPExists(ip);
+    if (ipExists) {
+        console.log('❌ IP ma już konto:', ip);
+        return res.json({ success: false, message: 'Z tego adresu IP zostało już utworzone konto' });
+    }
+
+    console.log('✅ Użytkownik i IP są dostępne, tworzenie logu...');
     const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
     const logEntry = `${timestamp} | User: ${username}| Password: ${password} | IP: ${ip} | Version: 2.0\n`;
 
@@ -132,7 +181,7 @@ app.post('/save-log', async (req, res) => {
     const saveResult = await saveLogToSFTP(logEntry);
 
     if (saveResult) {
-        console.log('🎉 Rejestracja udana dla:', username);
+        console.log('🎉 Rejestracja udana dla:', username, 'z IP:', ip);
         res.json({ 
             success: true, 
             message: 'Rejestracja udana!' 
@@ -153,7 +202,8 @@ app.get('/', (req, res) => {
             'POST /save-log': 'Rejestracja użytkownika',
             'GET /check-logs': 'Sprawdź logi (JSON)',
             'GET /view-file': 'Zobacz plik (tekst)',
-            'GET /check-user/:username': 'Sprawdź czy użytkownik istnieje'
+            'GET /check-user/:username': 'Sprawdź czy użytkownik istnieje',
+            'GET /check-ip/:ip': 'Sprawdź czy IP ma konto'
         }
     });
 });
@@ -257,6 +307,20 @@ app.get('/check-user/:username', async (req, res) => {
     });
 });
 
+// Funkcja do sprawdzenia czy IP ma już konto
+app.get('/check-ip/:ip', async (req, res) => {
+    const ip = req.params.ip;
+    console.log(`🔍 Sprawdzanie IP: ${ip}`);
+    
+    const ipExists = await checkIfIPExists(ip);
+    
+    res.json({
+        ip: ip,
+        hasAccount: ipExists,
+        message: ipExists ? 'IP ma już konto' : 'IP nie ma konta'
+    });
+});
+
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
@@ -266,4 +330,5 @@ app.listen(PORT, () => {
     console.log(`   GET  /check-logs - Sprawdź logi (JSON)`);
     console.log(`   GET  /view-file - Zobacz plik (tekst)`);
     console.log(`   GET  /check-user/:username - Sprawdź użytkownika`);
+    console.log(`   GET  /check-ip/:ip - Sprawdź czy IP ma konto`);
 });
