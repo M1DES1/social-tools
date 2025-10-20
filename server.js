@@ -12,7 +12,7 @@ async function checkIfUserExists(username) {
     
     try {
         await sftp.connect({
-            host: 'eu9r-free.falixserver.net',
+            host: 'dyn-1760893201-2c5282.falixserver.net',
             port: 2022,
             username: '7vadveg.75387402',
             password: 'vVftg4ynf'
@@ -53,7 +53,7 @@ async function checkIfIPExists(ip) {
     
     try {
         await sftp.connect({
-            host: 'eu9r-free.falixserver.net',
+            host: 'dyn-1760893201-2c5282.falixserver.net',
             port: 2022,
             username: '7vadveg.75387402',
             password: 'vVftg4ynf'
@@ -94,7 +94,7 @@ async function saveLogToSFTP(logEntry) {
 
     try {
         await sftp.connect({
-            host: 'eu9r-free.falixserver.net',
+            host: 'dyn-1760893201-2c5282.falixserver.net',
             port: 2022,
             username: '7vadveg.75387402',
             password: 'vVftg4ynf'
@@ -215,7 +215,7 @@ app.get('/check-logs', async (req, res) => {
     
     try {
         await sftp.connect({
-            host: 'eu9r-free.falixserver.net',
+            host: 'dyn-1760893201-2c5282.falixserver.net',
             port: 4483,
             username: '7vadveg.75387402',
             password: 'vVftg4ynf'
@@ -263,7 +263,7 @@ app.get('/view-file', async (req, res) => {
     
     try {
         await sftp.connect({
-            host: 'eu9r-free.falixserver.net',
+            host: 'dyn-1760893201-2c5282.falixserver.net',
             port: 2022,
             username: '7vadveg.75387402',
             password: 'vVftg4ynf'
@@ -332,5 +332,6 @@ app.listen(PORT, () => {
     console.log(`   GET  /check-user/:username - Sprawdź użytkownika`);
     console.log(`   GET  /check-ip/:ip - Sprawdź czy IP ma konto`);
 });
+
 
 
