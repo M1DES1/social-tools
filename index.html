@@ -3,32 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rejestracja - Social Tools</title>
+    <title>Social Tools - Logowanie</title>
     <link rel="icon" href="https://github.com/M1DES1/social-tools/raw/refs/heads/main/cwel.ico" type="image/x-icon">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
-        <h1>Rejestracja - Social Tools</h1>
-        <form id="registrationForm">
+        <h1>Social Tools</h1>
+        <p class="subtitle">Zaloguj się aby pobrać aplikację</p>
+        
+        <div class="tabs">
+            <button class="tab-button active" onclick="showTab('login')">Logowanie</button>
+            <button class="tab-button" onclick="showTab('register')">Rejestracja</button>
+        </div>
+
+        <!-- Formularz logowania -->
+        <form id="loginForm" class="tab-content active">
             <div class="form-group">
-                <label for="username">Nazwa użytkownika:</label>
-                <input type="text" id="username" name="username" required minlength="3">
+                <label for="loginUsername">Nazwa użytkownika:</label>
+                <input type="text" id="loginUsername" name="loginUsername" required>
             </div>
             <div class="form-group">
-                <label for="password">Hasło:</label>
-                <input type="password" id="password" name="password" required minlength="6">
+                <label for="loginPassword">Hasło:</label>
+                <input type="password" id="loginPassword" name="loginPassword" required>
+            </div>
+            <button type="submit">Zaloguj się</button>
+        </form>
+
+        <!-- Formularz rejestracji -->
+        <form id="registerForm" class="tab-content">
+            <div class="form-group">
+                <label for="regUsername">Nazwa użytkownika:</label>
+                <input type="text" id="regUsername" name="regUsername" required minlength="3">
+            </div>
+            <div class="form-group">
+                <label for="regPassword">Hasło:</label>
+                <input type="password" id="regPassword" name="regPassword" required minlength="6">
             </div>
             <div class="form-group">
                 <label for="confirmPassword">Potwierdź hasło:</label>
                 <input type="password" id="confirmPassword" name="confirmPassword" required>
             </div>
-            <button type="submit">Zarejestruj się i pobierz</button>
+            <button type="submit">Zarejestruj się</button>
         </form>
+
+        <!-- Strona po zalogowaniu -->
+        <div id="dashboard" class="tab-content">
+            <div class="welcome-message">
+                <h2>Witaj, <span id="userDisplayName"></span>!</h2>
+                <p>Jesteś zalogowany. Możesz teraz pobrać aplikację Social Tools.</p>
+            </div>
+            <a href="download.html" class="download-btn-main">
+                📥 Pobierz Social Tools
+            </a>
+            <button onclick="logout()" class="logout-btn">Wyloguj się</button>
+        </div>
         
         <div class="loading" id="loading">
             <div class="spinner"></div>
-            <p>Trwa rejestracja...</p>
+            <p>Trwa przetwarzanie...</p>
         </div>
         
         <div class="message" id="message"></div>
