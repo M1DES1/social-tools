@@ -21,14 +21,16 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 // SYSTEM W PAMIĘCI
 const activeUsers = new Map();
-const BAN_LIST = new Map(); // Map dla banów z powodem
-const MESSAGES = new Map(); // System wiadomości
+const BAN_LIST = new Map();
+const USER_MESSAGES = new Map(); // System wiadomości per użytkownik
 
 // ==================== SYSTEM WIADOMOŚCI ====================
 
 // Wysyłanie wiadomości do użytkownika
 app.post('/send-message', async (req, res) => {
     const { to_username, message, title, from_admin } = req.body;
+    
+    console.log(`📨 Próba wysłania wiadomości do: ${to_username}`, req.body);
     
     if (!to_username || !message) {
         return res.status(400).json({ 
@@ -48,13 +50,13 @@ app.post('/send-message', async (req, res) => {
             read: false
         };
 
-        // Zapisz wiadomość
-        if (!MESSAGES.has(to_username)) {
-            MESSAGES.set(to_username, []);
+        // Zapisz wiadomość dla użytkownika
+        if (!USER_MESSAGES.has(to_username)) {
+            USER_MESSAGES.set(to_username, []);
         }
-        MESSAGES.get(to_username).push(messageData);
+        USER_MESSAGES.get(to_username).push(messageData);
 
-        console.log(`📨 Wiadomość do ${to_username}: ${title} - ${message}`);
+        console.log(`✅ Wiadomość zapisana dla ${to_username}:`, messageData);
         
         res.json({ 
             success: true, 
@@ -63,6 +65,7 @@ app.post('/send-message', async (req, res) => {
         });
 
     } catch (error) {
+        console.error('❌ Błąd wysyłania wiadomości:', error);
         res.status(500).json({ 
             success: false, 
             message: 'Błąd serwera' 
@@ -74,23 +77,49 @@ app.post('/send-message', async (req, res) => {
 app.get('/messages/:username', async (req, res) => {
     const username = req.params.username;
     
+    console.log(`📥 Pobieranie wiadomości dla: ${username}`);
+    
     try {
-        const userMessages = MESSAGES.get(username) || [];
+        const userMessages = USER_MESSAGES.get(username) || [];
         
-        // Oznacz jako przeczytane przy pobraniu
-        userMessages.forEach(msg => msg.read = true);
+        console.log(`✅ Znaleziono ${userMessages.length} wiadomości dla ${username}`);
+        
+        // Zwróć nieprzeczytane wiadomości
+        const unreadMessages = userMessages.filter(msg => !msg.read);
         
         res.json({
             success: true,
-            messages: userMessages,
-            unread_count: userMessages.filter(msg => !msg.read).length
+            messages: unreadMessages,
+            unread_count: unreadMessages.length,
+            total_messages: userMessages.length
         });
 
     } catch (error) {
+        console.error('❌ Błąd pobierania wiadomości:', error);
         res.status(500).json({ 
             success: false, 
             message: 'Błąd serwera' 
         });
+    }
+});
+
+// Oznacz wiadomość jako przeczytaną
+app.post('/messages/:username/read', async (req, res) => {
+    const username = req.params.username;
+    const { message_id } = req.body;
+    
+    try {
+        const userMessages = USER_MESSAGES.get(username) || [];
+        const messageIndex = userMessages.findIndex(msg => msg.id === message_id);
+        
+        if (messageIndex !== -1) {
+            userMessages[messageIndex].read = true;
+            console.log(`✅ Oznaczono wiadomość ${message_id} jako przeczytaną`);
+        }
+        
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Błąd serwera' });
     }
 });
 
@@ -114,6 +143,7 @@ app.post('/update-status', async (req, res) => {
         
         if (ipBanned || userBanned) {
             const banReason = ipBanned ? BAN_LIST.get(ip).reason : 'Konto zbanowane';
+            console.log(`🚫 Odmowa dostępu - zbanowany użytkownik: ${username}, IP: ${ip}`);
             return res.json({ 
                 success: false, 
                 message: banReason, 
@@ -129,6 +159,7 @@ app.post('/update-status', async (req, res) => {
             .single();
 
         if (!userExists) {
+            console.log(`🗑️ Konto usunięte: ${username}`);
             return res.json({ 
                 success: false, 
                 message: '🗑️ KONTO USUNIĘTE przez administratora', 
@@ -154,7 +185,7 @@ app.post('/update-status', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Błąd update-status:', error);
+        console.error('❌ Błąd update-status:', error);
         res.status(500).json({ 
             success: false, 
             message: 'Błąd serwera' 
@@ -449,6 +480,8 @@ app.delete('/users/:username', async (req, res) => {
 
         // Usuń z aktywnych użytkowników
         activeUsers.delete(username);
+        // Usuń też wiadomości użytkownika
+        USER_MESSAGES.delete(username);
 
         res.json({ 
             success: true, 
@@ -472,7 +505,7 @@ app.get('/', (req, res) => {
         stats: {
             active_users: activeUsers.size,
             banned_ips: BAN_LIST.size,
-            total_messages: Array.from(MESSAGES.values()).flat().length
+            total_messages: Array.from(USER_MESSAGES.values()).flat().length
         },
         endpoints: {
             'POST /save-log': 'Rejestracja użytkownika',
@@ -507,5 +540,5 @@ const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
     console.log(`🚀 Serwer działa na porcie ${PORT}`);
     console.log(`✅ Wszystkie endpointy aktywne!`);
-    console.log(`📊 System: Bany: ${BAN_LIST.size}, Aktywni: ${activeUsers.size}, Wiadomości: ${MESSAGES.size}`);
+    console.log(`📊 System: Bany: ${BAN_LIST.size}, Aktywni: ${activeUsers.size}, Wiadomości: ${USER_MESSAGES.size}`);
 });
