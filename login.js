@@ -1,3 +1,4 @@
+// login.js - UPDATED WITH BETTER ERROR HANDLING
 document.getElementById('loginForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     
@@ -13,11 +14,24 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
     showMessage('', '');
 
     try {
+        console.log('🔐 Próba logowania:', username);
+        
         // Weryfikacja z backendem
         const usersResponse = await fetch('https://social-tools.onrender.com/check-logs');
-        const usersData = await usersResponse.json();
         
-        if (usersData.success) {
+        console.log('📩 Status odpowiedzi:', usersResponse.status);
+
+        let usersData;
+        try {
+            usersData = await usersResponse.json();
+        } catch (jsonError) {
+            console.error('❌ Błąd parsowania JSON:', jsonError);
+            throw new Error('Serwer zwrócił nieprawidłową odpowiedź');
+        }
+        
+        console.log('📊 Dane użytkowników:', usersData);
+        
+        if (usersData && usersData.success) {
             const userExists = usersData.users.find(user => 
                 user.username === username && user.password === password
             );
@@ -32,23 +46,29 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
                 showMessage('❌ Nieprawidłowa nazwa użytkownika lub hasło', 'error');
             }
         } else {
-            showMessage('❌ Błąd połączenia z serwerem', 'error');
+            const errorMsg = usersData ? usersData.message : 'Błąd połączenia z serwerem';
+            showMessage('❌ ' + errorMsg, 'error');
         }
     } catch (error) {
-        console.error('💥 Błąd:', error);
-        showMessage('❌ Wystąpił błąd podczas logowania', 'error');
+        console.error('💥 Błąd logowania:', error);
+        showMessage('❌ Błąd: ' + error.message, 'error');
     } finally {
         showLoading(false);
     }
 });
 
 function showLoading(show) {
-    document.getElementById('loading').style.display = show ? 'block' : 'none';
+    const loadingEl = document.getElementById('loading');
+    if (loadingEl) {
+        loadingEl.style.display = show ? 'block' : 'none';
+    }
 }
 
 function showMessage(message, type) {
     const messageEl = document.getElementById('message');
-    messageEl.textContent = message;
-    messageEl.className = 'message ' + type;
-    messageEl.style.display = message ? 'block' : 'none';
+    if (messageEl) {
+        messageEl.textContent = message;
+        messageEl.className = 'message ' + type;
+        messageEl.style.display = message ? 'block' : 'none';
+    }
 }
