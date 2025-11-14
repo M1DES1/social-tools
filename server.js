@@ -22,7 +22,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 // SYSTEM W PAMIĘCI
 const activeUsers = new Map();
 const BAN_LIST = new Map();
-const USER_MESSAGES = new Map(); // System wiadomości per użytkownik
+const USER_MESSAGES = new Map();
 
 // ==================== SYSTEM WIADOMOŚCI ====================
 
@@ -47,7 +47,8 @@ app.post('/send-message', async (req, res) => {
             title: title || 'Wiadomość od Administratora',
             message: message,
             timestamp: new Date().toISOString(),
-            read: false
+            read: false,
+            delivered: false
         };
 
         // Zapisz wiadomość dla użytkownika
@@ -56,7 +57,7 @@ app.post('/send-message', async (req, res) => {
         }
         USER_MESSAGES.get(to_username).push(messageData);
 
-        console.log(`✅ Wiadomość zapisana dla ${to_username}:`, messageData);
+        console.log(`✅ Wiadomość zapisana dla ${to_username}:`, messageData.title);
         
         res.json({ 
             success: true, 
@@ -82,10 +83,10 @@ app.get('/messages/:username', async (req, res) => {
     try {
         const userMessages = USER_MESSAGES.get(username) || [];
         
-        console.log(`✅ Znaleziono ${userMessages.length} wiadomości dla ${username}`);
-        
-        // Zwróć nieprzeczytane wiadomości
+        // Znajdź nieprzeczytane wiadomości
         const unreadMessages = userMessages.filter(msg => !msg.read);
+        
+        console.log(`✅ Znaleziono ${unreadMessages.length} nieprzeczytanych wiadomości dla ${username}`);
         
         res.json({
             success: true,
@@ -103,7 +104,7 @@ app.get('/messages/:username', async (req, res) => {
     }
 });
 
-// Oznacz wiadomość jako przeczytaną
+// Oznacz wiadomość jako przeczytaną (usuwa ją z listy nieprzeczytanych)
 app.post('/messages/:username/read', async (req, res) => {
     const username = req.params.username;
     const { message_id } = req.body;
@@ -113,12 +114,35 @@ app.post('/messages/:username/read', async (req, res) => {
         const messageIndex = userMessages.findIndex(msg => msg.id === message_id);
         
         if (messageIndex !== -1) {
+            // Oznacz jako przeczytaną
             userMessages[messageIndex].read = true;
-            console.log(`✅ Oznaczono wiadomość ${message_id} jako przeczytaną`);
+            console.log(`✅ Oznaczono wiadomość ${message_id} jako przeczytaną dla ${username}`);
         }
         
         res.json({ success: true });
     } catch (error) {
+        console.error('❌ Błąd oznaczania wiadomości:', error);
+        res.status(500).json({ success: false, message: 'Błąd serwera' });
+    }
+});
+
+// Usuń przeczytane wiadomości (sprzątanie)
+app.delete('/messages/:username/cleanup', async (req, res) => {
+    const username = req.params.username;
+    
+    try {
+        if (USER_MESSAGES.has(username)) {
+            const userMessages = USER_MESSAGES.get(username);
+            // Zostaw tylko nieprzeczytane wiadomości
+            const unreadMessages = userMessages.filter(msg => !msg.read);
+            USER_MESSAGES.set(username, unreadMessages);
+            
+            console.log(`🧹 Wyczyszczono przeczytane wiadomości dla ${username}`);
+        }
+        
+        res.json({ success: true });
+    } catch (error) {
+        console.error('❌ Błąd czyszczenia wiadomości:', error);
         res.status(500).json({ success: false, message: 'Błąd serwera' });
     }
 });
@@ -167,17 +191,20 @@ app.post('/update-status', async (req, res) => {
             });
         }
 
-        // Aktualizuj status
+        // Aktualizuj status z aktualnym timestamp
         const userData = {
             username,
             ip,
             status: status || 'online',
             version: version || '2.0',
             last_activity: new Date().toISOString(),
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            last_status_update: Date.now()
         };
 
         activeUsers.set(username, userData);
+
+        console.log(`🟢 Status zaktualizowany: ${username} - ${status}`);
 
         res.json({ 
             success: true, 
@@ -196,13 +223,26 @@ app.post('/update-status', async (req, res) => {
 // Lista statusów online (dla Admin Panel)
 app.get('/status', async (req, res) => {
     try {
+        const now = Date.now();
+        const OFFLINE_THRESHOLD = 15 * 1000; // 15 sekund
+        
+        // Sprawdź które statusy są nieaktualne
+        for (let [username, userData] of activeUsers.entries()) {
+            if (now - userData.timestamp > OFFLINE_THRESHOLD) {
+                // Oznacz jako offline
+                userData.status = 'offline';
+                console.log(`⚪ Automatycznie oznaczono jako offline: ${username}`);
+            }
+        }
+
         const statuses = Array.from(activeUsers.values());
         const onlineUsers = statuses.filter(s => s.status === 'online');
+        const offlineUsers = statuses.filter(s => s.status === 'offline');
         
         res.json({ 
             success: true, 
             online: onlineUsers.length,
-            offline: statuses.length - onlineUsers.length,
+            offline: offlineUsers.length,
             total: statuses.length,
             statuses: statuses,
             banned_ips: Array.from(BAN_LIST.entries()).map(([ip, data]) => ({
@@ -244,6 +284,7 @@ app.post('/ban-ip', async (req, res) => {
         // Usuń z aktywnych użytkowników jeśli jest online
         if (username && activeUsers.has(username)) {
             activeUsers.delete(username);
+            console.log(`🚫 Usunięto z aktywnych: ${username} (zbanowany)`);
         }
 
         console.log(`🚫 Zbanowano IP: ${ip}, użytkownik: ${username}, powód: ${reason}`);
@@ -414,9 +455,13 @@ app.get('/users', async (req, res) => {
 
         if (error) throw error;
 
+        const now = Date.now();
+        const ONLINE_THRESHOLD = 15 * 1000; // 15 sekund
+
         // Dodaj status online/offline i ban
         const usersWithStatus = (users || []).map(user => {
-            const isOnline = activeUsers.has(user.username);
+            const userActive = activeUsers.get(user.username);
+            const isOnline = userActive && (now - userActive.timestamp < ONLINE_THRESHOLD);
             const isBanned = BAN_LIST.has(user.ip);
             const banInfo = isBanned ? BAN_LIST.get(user.ip) : null;
 
@@ -425,7 +470,8 @@ app.get('/users', async (req, res) => {
                 is_online: isOnline,
                 is_banned: isBanned,
                 ban_reason: banInfo?.reason,
-                status: isOnline ? '🟢 ONLINE' : (isBanned ? '🚫 BANNED' : '⚫ OFFLINE')
+                status: isOnline ? '🟢 ONLINE' : (isBanned ? '🚫 BANNED' : '⚫ OFFLINE'),
+                last_activity: userActive?.last_activity || 'Never'
             };
         });
 
@@ -483,6 +529,8 @@ app.delete('/users/:username', async (req, res) => {
         // Usuń też wiadomości użytkownika
         USER_MESSAGES.delete(username);
 
+        console.log(`🗑️ Usunięto użytkownika: ${username}`);
+
         res.json({ 
             success: true, 
             message: `Użytkownik ${username} został usunięty i zbanowany` 
@@ -498,12 +546,18 @@ app.delete('/users/:username', async (req, res) => {
 
 // Endpoint główny
 app.get('/', (req, res) => {
+    const now = Date.now();
+    const onlineUsers = Array.from(activeUsers.values()).filter(user => 
+        now - user.timestamp < 15000
+    );
+    
     res.json({ 
         message: '🚀 Social Tools API działa!', 
         status: 'online',
         version: '2.0',
         stats: {
-            active_users: activeUsers.size,
+            active_users: onlineUsers.length,
+            total_users: activeUsers.size,
             banned_ips: BAN_LIST.size,
             total_messages: Array.from(USER_MESSAGES.values()).flat().length
         },
@@ -518,23 +572,44 @@ app.get('/', (req, res) => {
             'POST /unban-ip': 'Odbanuj IP',
             'GET /bans': 'Lista banów',
             'POST /send-message': 'Wyślij wiadomość',
-            'GET /messages/:username': 'Pobierz wiadomości'
+            'GET /messages/:username': 'Pobierz wiadomości',
+            'POST /messages/:username/read': 'Oznacz jako przeczytane'
         }
     });
 });
 
-// Czyszczenie starych statusów co 5 minut
+// Czyszczenie starych statusów co 30 sekund
 setInterval(() => {
     const now = Date.now();
-    const FIVE_MINUTES = 5 * 60 * 1000;
+    const CLEANUP_THRESHOLD = 5 * 60 * 1000; // 5 minut
     
+    let cleanedCount = 0;
     for (let [username, userData] of activeUsers.entries()) {
-        if (now - userData.timestamp > FIVE_MINUTES) {
+        if (now - userData.timestamp > CLEANUP_THRESHOLD) {
             activeUsers.delete(username);
-            console.log(`🕐 Usunięto nieaktywnego użytkownika: ${username}`);
+            cleanedCount++;
         }
     }
+    
+    if (cleanedCount > 0) {
+        console.log(`🧹 Wyczyszczono ${cleanedCount} nieaktywnych użytkowników`);
+    }
 }, 30000);
+
+// Automatyczne czyszczenie przeczytanych wiadomości co godzinę
+setInterval(() => {
+    let cleanedCount = 0;
+    for (let [username, messages] of USER_MESSAGES.entries()) {
+        const originalCount = messages.length;
+        const unreadMessages = messages.filter(msg => !msg.read);
+        USER_MESSAGES.set(username, unreadMessages);
+        cleanedCount += (originalCount - unreadMessages.length);
+    }
+    
+    if (cleanedCount > 0) {
+        console.log(`🧹 Wyczyszczono ${cleanedCount} przeczytanych wiadomości`);
+    }
+}, 60 * 60 * 1000);
 
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
