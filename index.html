@@ -3,70 +3,87 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Social Tools - Logowanie</title>
+    <title>Social Tools - Główna</title>
     <link rel="icon" href="https://github.com/M1DES1/social-tools/raw/refs/heads/main/cwel.ico" type="image/x-icon">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <h1>Social Tools</h1>
-        <p class="subtitle">Zaloguj się aby pobrać aplikację</p>
-        
-        <div class="tabs">
-            <button class="tab-button active" onclick="showTab('login')">Logowanie</button>
-            <button class="tab-button" onclick="showTab('register')">Rejestracja</button>
+    <!-- Nagłówek -->
+    <header class="header">
+        <div class="logo">
+            <h2>Social Tools</h2>
         </div>
+        <nav class="nav">
+            <a href="login.html" class="nav-link">Logowanie</a>
+            <a href="register.html" class="nav-link">Rejestracja</a>
+        </nav>
+    </header>
 
-        <!-- Formularz logowania -->
-        <form id="loginForm" class="tab-content active">
-            <div class="form-group">
-                <label for="loginUsername">Nazwa użytkownika:</label>
-                <input type="text" id="loginUsername" name="loginUsername" required>
+    <!-- Główna zawartość -->
+    <main class="main-content">
+        <div class="hero">
+            <h1>Social Tools</h1>
+            <p class="hero-subtitle">Zaawansowane narzędzia social media w jednej aplikacji</p>
+            
+            <div class="features">
+                <div class="feature">
+                    <span class="feature-icon">🚀</span>
+                    <h3>Szybkie działanie</h3>
+                    <p>Optymalizacja pod kątem wydajności</p>
+                </div>
+                <div class="feature">
+                    <span class="feature-icon">🔒</span>
+                    <h3>Bezpieczeństwo</h3>
+                    <p>Twoje dane są chronione</p>
+                </div>
+                <div class="feature">
+                    <span class="feature-icon">💫</span>
+                    <h3>Nowoczesny design</h3>
+                    <p>Intuicyjny i przyjazny interfejs</p>
+                </div>
             </div>
-            <div class="form-group">
-                <label for="loginPassword">Hasło:</label>
-                <input type="password" id="loginPassword" name="loginPassword" required>
-            </div>
-            <button type="submit">Zaloguj się</button>
-        </form>
 
-        <!-- Formularz rejestracji -->
-        <form id="registerForm" class="tab-content">
-            <div class="form-group">
-                <label for="regUsername">Nazwa użytkownika:</label>
-                <input type="text" id="regUsername" name="regUsername" required minlength="3">
-            </div>
-            <div class="form-group">
-                <label for="regPassword">Hasło:</label>
-                <input type="password" id="regPassword" name="regPassword" required minlength="6">
-            </div>
-            <div class="form-group">
-                <label for="confirmPassword">Potwierdź hasło:</label>
-                <input type="password" id="confirmPassword" name="confirmPassword" required>
-            </div>
-            <button type="submit">Zarejestruj się</button>
-        </form>
-
-        <!-- Strona po zalogowaniu -->
-        <div id="dashboard" class="tab-content">
-            <div class="welcome-message">
-                <h2>Witaj, <span id="userDisplayName"></span>!</h2>
-                <p>Jesteś zalogowany. Możesz teraz pobrać aplikację Social Tools.</p>
-            </div>
-            <a href="download.html" class="download-btn-main">
+            <!-- Przycisk download -->
+            <a href="#" class="download-btn-main" onclick="checkAuth(event)">
                 📥 Pobierz Social Tools
             </a>
-            <button onclick="logout()" class="logout-btn">Wyloguj się</button>
-        </div>
-        
-        <div class="loading" id="loading">
-            <div class="spinner"></div>
-            <p>Trwa przetwarzanie...</p>
-        </div>
-        
-        <div class="message" id="message"></div>
-    </div>
 
-    <script src="script.js"></script>
+            <p class="download-info">Rozmiar: ~2 MB • Wersja: 2.0 • System: Windows</p>
+        </div>
+    </main>
+
+    <script>
+        // Sprawdza czy użytkownik jest zalogowany przed pobraniem
+        function checkAuth(event) {
+            event.preventDefault();
+            const currentUser = localStorage.getItem('currentUser');
+            
+            if (currentUser) {
+                // Przekieruj do download.html jeśli zalogowany
+                window.location.href = 'download.html';
+            } else {
+                // Przekieruj do rejestracji jeśli nie zalogowany
+                window.location.href = 'register.html';
+            }
+        }
+
+        // Sprawdź czy użytkownik jest zalogowany przy ładowaniu strony
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentUser = localStorage.getItem('currentUser');
+            if (currentUser) {
+                // Zmień linki w nagłówku jeśli użytkownik jest zalogowany
+                document.querySelector('.nav').innerHTML = `
+                    <span class="welcome-text">Witaj, ${currentUser}!</span>
+                    <a href="download.html" class="nav-link">Pobierz</a>
+                    <a href="#" class="nav-link" onclick="logout()">Wyloguj</a>
+                `;
+            }
+        });
+
+        function logout() {
+            localStorage.removeItem('currentUser');
+            window.location.href = 'index.html';
+        }
+    </script>
 </body>
 </html>
