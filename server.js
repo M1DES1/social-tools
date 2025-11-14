@@ -1,46 +1,31 @@
 const express = require('express');
-const Client = require('ssh2-sftp-client');
 const cors = require('cors');
+const { createClient } = require('@supabase/supabase-js');
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
+// Konfiguracja Supabase z Twoimi danymi
+const supabaseUrl = 'https://kazlfzeinvzpyywpilkk.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImthemxmemVpbnZ6cHl5d3BpbGtrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMxMjYzNzgsImV4cCI6MjA3ODcwMjM3OH0.BvquQ7gTnvwllXzg60sYdXXpQqmM_O5bkxoh5S8Bn3Q';
+const supabase = createClient(supabaseUrl, supabaseKey);
+
 // Funkcja do sprawdzania czy użytkownik istnieje
 async function checkIfUserExists(username) {
-    const sftp = new Client();
-    
     try {
-        await sftp.connect({
-            host: 'dyn-1760893201-2c5282.falixserver.net',
-            port: 2022,
-            username: '7vadveg.75387402',
-            password: 'vVftg4ynf'
-        });
+        const { data, error } = await supabase
+            .from('users')
+            .select('username')
+            .eq('username', username)
+            .single();
 
-        const remotePath = '/users_socialtool/user_logs.txt';
-        
-        try {
-            const fileContent = await sftp.get(remotePath);
-            const logs = fileContent.toString();
-            
-            // Sprawdź każdą linię czy zawiera username
-            const lines = logs.split('\n').filter(line => line.trim());
-            for (const line of lines) {
-                if (line.includes(`User: ${username}|`)) {
-                    await sftp.end();
-                    return true;
-                }
-            }
-            
-            await sftp.end();
-            return false;
-        } catch (error) {
-            // Plik nie istnieje - pierwszy użytkownik
-            await sftp.end();
+        if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+            console.error('Błąd przy sprawdzaniu użytkownika:', error);
             return false;
         }
 
+        return !!data; // zwraca true jeśli użytkownik istnieje
     } catch (error) {
         console.error('Błąd przy sprawdzaniu użytkownika:', error);
         return false;
@@ -49,101 +34,55 @@ async function checkIfUserExists(username) {
 
 // Funkcja do sprawdzania czy IP ma już konto
 async function checkIfIPExists(ip) {
-    const sftp = new Client();
-    
     try {
-        await sftp.connect({
-            host: 'dyn-1760893201-2c5282.falixserver.net',
-            port: 2022,
-            username: '7vadveg.75387402',
-            password: 'vVftg4ynf'
-        });
+        const { data, error } = await supabase
+            .from('users')
+            .select('ip')
+            .eq('ip', ip)
+            .single();
 
-        const remotePath = '/users_socialtool/user_logs.txt';
-        
-        try {
-            const fileContent = await sftp.get(remotePath);
-            const logs = fileContent.toString();
-            
-            // Sprawdź każdą linię czy zawiera to IP
-            const lines = logs.split('\n').filter(line => line.trim());
-            for (const line of lines) {
-                if (line.includes(`IP: ${ip} `)) {
-                    await sftp.end();
-                    return true;
-                }
-            }
-            
-            await sftp.end();
-            return false;
-        } catch (error) {
-            // Plik nie istnieje - pierwsze IP
-            await sftp.end();
+        if (error && error.code !== 'PGRST116') {
+            console.error('Błąd przy sprawdzaniu IP:', error);
             return false;
         }
 
+        return !!data; // zwraca true jeśli IP ma konto
     } catch (error) {
         console.error('Błąd przy sprawdzaniu IP:', error);
         return false;
     }
 }
 
-// Funkcja do zapisywania logu - DODAJE NOWĄ LINIĘ
-async function saveLogToSFTP(logEntry) {
-    const sftp = new Client();
-
+// Funkcja do zapisywania użytkownika
+async function saveUserToDatabase(username, password, ip) {
     try {
-        await sftp.connect({
-            host: 'dyn-1760893201-2c5282.falixserver.net',
-            port: 2022,
-            username: '7vadveg.75387402',
-            password: 'vVftg4ynf'
-        });
+        const { data, error } = await supabase
+            .from('users')
+            .insert([
+                {
+                    username: username,
+                    password: password,
+                    ip: ip,
+                    version: '2.0',
+                    created_at: new Date().toISOString()
+                }
+            ])
+            .select();
 
-        const remotePath = '/users_socialtool/user_logs.txt';
-        
-        let existingContent = '';
-        
-        // 1. Pobierz istniejący plik
-        try {
-            const fileContent = await sftp.get(remotePath);
-            existingContent = fileContent.toString();
-            console.log('📄 Istniejąca zawartość:', existingContent);
-        } catch (error) {
-            // Plik nie istnieje - zaczynamy od pustego
-            console.log('📄 Plik nie istnieje, tworzę nowy...');
-            existingContent = '';
+        if (error) {
+            console.error('Błąd zapisu do bazy:', error);
+            return false;
         }
 
-        // 2. Dodaj nową linię do istniejącej zawartości
-        let newContent;
-        if (existingContent.trim() === '') {
-            // Jeśli plik jest pusty - dodaj pierwszą linię
-            newContent = logEntry;
-        } else {
-            // Jeśli plik ma już dane - dodaj nową linię na końcu
-            // Upewnij się że ostatnia linia ma znak nowej linii
-            if (!existingContent.endsWith('\n')) {
-                existingContent += '\n';
-            }
-            newContent = existingContent + logEntry;
-        }
-
-        console.log('💾 Nowa zawartość do zapisania:', newContent);
-        
-        // 3. Zapisz cały plik z dodaną nową linią
-        await sftp.put(Buffer.from(newContent), remotePath);
-        
-        await sftp.end();
-        console.log('✅ Pomyślnie dodano nowy log:', logEntry.trim());
+        console.log('✅ Pomyślnie dodano użytkownika:', data);
         return true;
-
     } catch (error) {
-        console.error('❌ Błąd SFTP:', error);
+        console.error('❌ Błąd zapisu:', error);
         return false;
     }
 }
 
+// Główna endpoint do rejestracji
 app.post('/save-log', async (req, res) => {
     console.log('=== 🆕 NOWA REJESTRACJA ===');
     console.log('📨 Otrzymano żądanie:', req.body);
@@ -170,15 +109,11 @@ app.post('/save-log', async (req, res) => {
         return res.json({ success: false, message: 'Za dużo użytkowników zostało zarejestrowanych na tym IP' });
     }
 
-    console.log('✅ Użytkownik i IP są dostępne, tworzenie logu...');
-    const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
-    const logEntry = `${timestamp} | User: ${username}| Password: ${password} | IP: ${ip} | Version: 2.0\n`;
+    console.log('✅ Użytkownik i IP są dostępne, zapisywanie do bazy...');
 
-    console.log('📝 Nowy log:', logEntry);
-
-    // Zapisz do SFTP
-    console.log('💾 Zapisywanie do SFTP...');
-    const saveResult = await saveLogToSFTP(logEntry);
+    // Zapisz do bazy danych
+    console.log('💾 Zapisywanie do Supabase...');
+    const saveResult = await saveUserToDatabase(username, password, ip);
 
     if (saveResult) {
         console.log('🎉 Rejestracja udana dla:', username, 'z IP:', ip);
@@ -194,62 +129,29 @@ app.post('/save-log', async (req, res) => {
     console.log('=== ✅ KONIEC REJESTRACJI ===\n');
 });
 
-app.get('/', (req, res) => {
-    res.json({ 
-        message: 'SFTP Logger API działa!', 
-        status: 'online',
-        endpoints: {
-            'POST /save-log': 'Rejestracja użytkownika',
-            'GET /check-logs': 'Sprawdź logi (JSON)',
-            'GET /view-file': 'Zobacz plik (tekst)',
-            'GET /check-user/:username': 'Sprawdź czy użytkownik istnieje',
-            'GET /check-ip/:ip': 'Sprawdź czy IP ma konto'
-        }
-    });
-});
-
-// Funkcja do sprawdzania zawartości pliku
+// Endpoint do sprawdzania wszystkich użytkowników
 app.get('/check-logs', async (req, res) => {
-    console.log('=== 📊 SPRAWDZANIE LOGÓW ===');
-    const sftp = new Client();
+    console.log('=== 📊 SPRAWDZANIE UŻYTKOWNIKÓW ===');
     
     try {
-        await sftp.connect({
-            host: 'dyn-1760893201-2c5282.falixserver.net',
-            port: 4483,
-            username: '7vadveg.75387402',
-            password: 'vVftg4ynf'
-        });
+        const { data, error } = await supabase
+            .from('users')
+            .select('*')
+            .order('created_at', { ascending: false });
 
-        const remotePath = '/users_socialtool/user_logs.txt';
-        
-        try {
-            const fileContent = await sftp.get(remotePath);
-            const logs = fileContent.toString();
-            const lines = logs.split('\n').filter(line => line.trim());
-            
-            await sftp.end();
-            
-            console.log('📋 Znalezione linie:', lines);
-            
-            res.json({ 
-                success: true, 
-                logs: logs,
-                lines: lines,
-                totalLines: lines.length,
-                fileInfo: `Plik zawiera ${lines.length} wpisów`,
-                rawContent: logs
-            });
-        } catch (error) {
-            console.log('📭 Plik nie istnieje lub jest pusty');
-            await sftp.end();
-            res.json({ 
-                success: false, 
-                error: 'Plik nie istnieje lub jest pusty',
-                lines: [],
-                totalLines: 0
-            });
+        if (error) {
+            console.error('Błąd:', error);
+            return res.json({ success: false, error: error.message });
         }
+
+        console.log('📋 Znalezionych użytkowników:', data?.length || 0);
+        
+        res.json({ 
+            success: true, 
+            users: data || [],
+            totalUsers: data?.length || 0,
+            message: `Znaleziono ${data?.length || 0} użytkowników`
+        });
 
     } catch (error) {
         console.error('❌ Błąd:', error);
@@ -257,43 +159,7 @@ app.get('/check-logs', async (req, res) => {
     }
 });
 
-// Funkcja do wyświetlenia pełnej zawartości pliku
-app.get('/view-file', async (req, res) => {
-    const sftp = new Client();
-    
-    try {
-        await sftp.connect({
-            host: 'dyn-1760893201-2c5282.falixserver.net',
-            port: 2022,
-            username: '7vadveg.75387402',
-            password: 'vVftg4ynf'
-        });
-
-        const remotePath = '/users_socialtool/user_logs.txt';
-        
-        try {
-            const fileContent = await sftp.get(remotePath);
-            const logs = fileContent.toString();
-            
-            await sftp.end();
-            
-            // Zwróć jako tekst do łatwego przeglądania
-            res.set('Content-Type', 'text/plain');
-            res.send(`=== ZAWARTOŚĆ PLIKU user_logs.txt ===\n\n${logs}\n\n=== KONIEC PLIKU ===\nLiczba znaków: ${logs.length}\nLiczba linii: ${logs.split('\n').length}`);
-        } catch (error) {
-            await sftp.end();
-            res.set('Content-Type', 'text/plain');
-            res.send('=== PLIK JEST PUSTY LUB NIE ISTNIEJE ===');
-        }
-
-    } catch (error) {
-        console.error('❌ Błąd:', error);
-        res.set('Content-Type', 'text/plain');
-        res.send('Błąd: ' + error.message);
-    }
-});
-
-// Funkcja do sprawdzenia czy konkretny użytkownik istnieje
+// Endpoint do sprawdzania konkretnego użytkownika
 app.get('/check-user/:username', async (req, res) => {
     const username = req.params.username;
     console.log(`🔍 Sprawdzanie użytkownika: ${username}`);
@@ -307,7 +173,7 @@ app.get('/check-user/:username', async (req, res) => {
     });
 });
 
-// Funkcja do sprawdzenia czy IP ma już konto
+// Endpoint do sprawdzania IP
 app.get('/check-ip/:ip', async (req, res) => {
     const ip = req.params.ip;
     console.log(`🔍 Sprawdzanie IP: ${ip}`);
@@ -321,17 +187,59 @@ app.get('/check-ip/:ip', async (req, res) => {
     });
 });
 
+// Endpoint do usuwania użytkownika (przydatne do testów)
+app.delete('/delete-user/:username', async (req, res) => {
+    const username = req.params.username;
+    console.log(`🗑️ Usuwanie użytkownika: ${username}`);
+    
+    try {
+        const { error } = await supabase
+            .from('users')
+            .delete()
+            .eq('username', username);
+
+        if (error) {
+            console.error('Błąd usuwania:', error);
+            return res.json({ success: false, error: error.message });
+        }
+
+        res.json({
+            success: true,
+            message: `Użytkownik ${username} został usunięty`
+        });
+    } catch (error) {
+        console.error('❌ Błąd:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
+// Endpoint główny
+app.get('/', (req, res) => {
+    res.json({ 
+        message: 'Supabase Logger API działa!', 
+        status: 'online',
+        database: 'Supabase PostgreSQL',
+        project: 'kazlfzeinvzpyywpilkk',
+        endpoints: {
+            'POST /save-log': 'Rejestracja użytkownika',
+            'GET /check-logs': 'Sprawdź użytkowników (JSON)',
+            'GET /check-user/:username': 'Sprawdź czy użytkownik istnieje',
+            'GET /check-ip/:ip': 'Sprawdź czy IP ma konto',
+            'DELETE /delete-user/:username': 'Usuń użytkownika (testy)'
+        }
+    });
+});
+
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`📊 Dostępne endpointy:`);
+    console.log(`📊 Supabase API działa`);
+    console.log(`🔗 URL: ${supabaseUrl}`);
+    console.log(`📋 Dostępne endpointy:`);
     console.log(`   GET  / - Status API`);
     console.log(`   POST /save-log - Rejestracja użytkownika`);
-    console.log(`   GET  /check-logs - Sprawdź logi (JSON)`);
-    console.log(`   GET  /view-file - Zobacz plik (tekst)`);
+    console.log(`   GET  /check-logs - Sprawdź użytkowników`);
     console.log(`   GET  /check-user/:username - Sprawdź użytkownika`);
-    console.log(`   GET  /check-ip/:ip - Sprawdź czy IP ma konto`);
+    console.log(`   GET  /check-ip/:ip - Sprawdź IP`);
+    console.log(`   DELETE /delete-user/:username - Usuń użytkownika`);
 });
-
-
-
