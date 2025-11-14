@@ -26,8 +26,49 @@ body {
 h1 {
     color: #333;
     text-align: center;
-    margin-bottom: 30px;
+    margin-bottom: 10px;
     font-weight: 600;
+}
+
+.subtitle {
+    text-align: center;
+    color: #666;
+    margin-bottom: 30px;
+}
+
+.tabs {
+    display: flex;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #ddd;
+}
+
+.tab-button {
+    flex: 1;
+    padding: 12px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 500;
+    color: #666;
+    transition: all 0.3s;
+}
+
+.tab-button.active {
+    color: #667eea;
+    border-bottom: 2px solid #667eea;
+}
+
+.tab-button:hover {
+    color: #667eea;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
 }
 
 .form-group {
@@ -75,6 +116,44 @@ button:hover {
 
 button:active {
     transform: translateY(0);
+}
+
+/* Strona po zalogowaniu */
+.welcome-message {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.welcome-message h2 {
+    color: #333;
+    margin-bottom: 10px;
+}
+
+.welcome-message p {
+    color: #666;
+}
+
+.download-btn-main {
+    display: block;
+    padding: 15px;
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    text-decoration: none;
+    border-radius: 5px;
+    font-size: 18px;
+    font-weight: 600;
+    text-align: center;
+    margin-bottom: 15px;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.download-btn-main:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.logout-btn {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
 }
 
 .message {
