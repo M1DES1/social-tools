@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logowanie - Social Tools</title>
+    <link rel="icon" href="https://github.com/M1DES1/social-tools/raw/refs/heads/main/cwel.ico" type="image/x-icon">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="header">
+        <div class="logo">
+            <h2><a href="index.html" style="color: inherit; text-decoration: none;">Social Tools</a></h2>
+        </div>
+        <nav class="nav">
+            <a href="index.html" class="nav-link">Strona główna</a>
+            <a href="register.html" class="nav-link">Rejestracja</a>
+        </nav>
+    </header>
+
+    <div class="container">
+        <h1>Logowanie</h1>
+        <p class="subtitle">Zaloguj się do swojego konta</p>
+        
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="username">Nazwa użytkownika:</label>
+                <input type="text" id="username" name="username" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Hasło:</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <button type="submit">Zaloguj się</button>
+        </form>
+        
+        <div class="auth-links">
+            <p>Nie masz konta? <a href="register.html">Zarejestruj się</a></p>
+        </div>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Trwa logowanie...</p>
+        </div>
+        
+        <div class="message" id="message"></div>
+    </div>
+
+    <script src="login.js"></script>
+</body>
+</html>

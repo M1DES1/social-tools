@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rejestracja - Social Tools</title>
+    <link rel="icon" href="https://github.com/M1DES1/social-tools/raw/refs/heads/main/cwel.ico" type="image/x-icon">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="header">
+        <div class="logo">
+            <h2><a href="index.html" style="color: inherit; text-decoration: none;">Social Tools</a></h2>
+        </div>
+        <nav class="nav">
+            <a href="index.html" class="nav-link">Strona główna</a>
+            <a href="login.html" class="nav-link">Logowanie</a>
+        </nav>
+    </header>
+
+    <div class="container">
+        <h1>Rejestracja</h1>
+        <p class="subtitle">Utwórz nowe konto aby pobrać aplikację</p>
+        
+        <form id="registrationForm">
+            <div class="form-group">
+                <label for="username">Nazwa użytkownika:</label>
+                <input type="text" id="username" name="username" required minlength="3">
+            </div>
+            <div class="form-group">
+                <label for="password">Hasło:</label>
+                <input type="password" id="password" name="password" required minlength="6">
+            </div>
+            <div class="form-group">
+                <label for="confirmPassword">Potwierdź hasło:</label>
+                <input type="password" id="confirmPassword" name="confirmPassword" required>
+            </div>
+            <button type="submit">Zarejestruj się</button>
+        </form>
+        
+        <div class="auth-links">
+            <p>Masz już konto? <a href="login.html">Zaloguj się</a></p>
+        </div>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Trwa rejestracja...</p>
+        </div>
+        
+        <div class="message" id="message"></div>
+    </div>
+
+    <script src="register.js"></script>
+</body>
+</html>
