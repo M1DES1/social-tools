@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const { createClient } = require('@supabase/supabase-js');
+const mysql = require('mysql2/promise');
 const app = express();
 
 // KONFIGURACJA CORS
@@ -14,19 +14,68 @@ app.options('*', cors());
 // PARSOWANIE JSON
 app.use(express.json());
 
-// KONFIGURACJA SUPABASE
-const supabaseUrl = 'https://kazlfzeinvzpyywpilkk.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImthemxmemVpbnZ6cHl5d3BpbGtrIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MzEyNjM3OCwiZXhwIjoyMDc4NzAyMzc4fQ.M4DN5LWKX9LcDZFkBwRz5mVv0dlr2_UgDAq96l48flU';
-const supabase = createClient(supabaseUrl, supabaseKey);
+// KONFIGURACJA MYSQL AIVEN - TWOJE DANE
+const dbConfig = {
+    host: 'mysql-13cfe9d1-w0bise-59dc.c.aivencloud.com',
+    port: 22831,
+    user: 'avnadmin',
+    password: 'AVNS_G5ODOqQ6kaZu9o86Cd5',
+    database: 'defaultdb',
+    ssl: {
+        rejectUnauthorized: false
+    },
+    connectTimeout: 60000,
+    acquireTimeout: 60000,
+    timeout: 60000
+};
+
+// FUNKCJA DO POŁĄCZENIA Z BAZĄ
+async function getConnection() {
+    try {
+        const connection = await mysql.createConnection(dbConfig);
+        console.log('✅ Połączono z MySQL Aiven');
+        return connection;
+    } catch (error) {
+        console.error('❌ Błąd połączenia z MySQL:', error);
+        throw error;
+    }
+}
 
 // SYSTEM W PAMIĘCI
 const activeUsers = new Map();
 const BAN_LIST = new Map();
 const USER_MESSAGES = new Map();
 
+// INICJALIZACJA BAZY DANYCH
+async function initializeDatabase() {
+    let connection;
+    try {
+        connection = await getConnection();
+        
+        // Tworzenie tabeli users jeśli nie istnieje
+        await connection.execute(`
+            CREATE TABLE IF NOT EXISTS users (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                username VARCHAR(255) UNIQUE NOT NULL,
+                password VARCHAR(255) NOT NULL,
+                ip VARCHAR(45),
+                version VARCHAR(50) DEFAULT '2.0',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_login TIMESTAMP NULL,
+                status VARCHAR(50) DEFAULT 'offline'
+            )
+        `);
+        
+        console.log('✅ Tabela users gotowa');
+        await connection.end();
+    } catch (error) {
+        console.error('❌ Błąd inicjalizacji bazy danych:', error);
+        if (connection) await connection.end();
+    }
+}
+
 // ==================== SYSTEM WIADOMOŚCI ====================
 
-// Wysyłanie wiadomości do użytkownika
 app.post('/send-message', async (req, res) => {
     const { to_username, message, title, from_admin } = req.body;
     
@@ -51,7 +100,6 @@ app.post('/send-message', async (req, res) => {
             delivered: false
         };
 
-        // Zapisz wiadomość dla użytkownika
         if (!USER_MESSAGES.has(to_username)) {
             USER_MESSAGES.set(to_username, []);
         }
@@ -74,7 +122,6 @@ app.post('/send-message', async (req, res) => {
     }
 });
 
-// Pobieranie wiadomości dla użytkownika
 app.get('/messages/:username', async (req, res) => {
     const username = req.params.username;
     
@@ -82,8 +129,6 @@ app.get('/messages/:username', async (req, res) => {
     
     try {
         const userMessages = USER_MESSAGES.get(username) || [];
-        
-        // Znajdź nieprzeczytane wiadomości
         const unreadMessages = userMessages.filter(msg => !msg.read);
         
         console.log(`✅ Znaleziono ${unreadMessages.length} nieprzeczytanych wiadomości dla ${username}`);
@@ -104,7 +149,6 @@ app.get('/messages/:username', async (req, res) => {
     }
 });
 
-// Oznacz wiadomość jako przeczytaną (usuwa ją z listy nieprzeczytanych)
 app.post('/messages/:username/read', async (req, res) => {
     const username = req.params.username;
     const { message_id } = req.body;
@@ -114,7 +158,6 @@ app.post('/messages/:username/read', async (req, res) => {
         const messageIndex = userMessages.findIndex(msg => msg.id === message_id);
         
         if (messageIndex !== -1) {
-            // Oznacz jako przeczytaną
             userMessages[messageIndex].read = true;
             console.log(`✅ Oznaczono wiadomość ${message_id} jako przeczytaną dla ${username}`);
         }
@@ -126,14 +169,12 @@ app.post('/messages/:username/read', async (req, res) => {
     }
 });
 
-// Usuń przeczytane wiadomości (sprzątanie)
 app.delete('/messages/:username/cleanup', async (req, res) => {
     const username = req.params.username;
     
     try {
         if (USER_MESSAGES.has(username)) {
             const userMessages = USER_MESSAGES.get(username);
-            // Zostaw tylko nieprzeczytane wiadomości
             const unreadMessages = userMessages.filter(msg => !msg.read);
             USER_MESSAGES.set(username, unreadMessages);
             
@@ -149,7 +190,6 @@ app.delete('/messages/:username/cleanup', async (req, res) => {
 
 // ==================== SYSTEM STATUSÓW ====================
 
-// Aktualizacja statusu (dla Social Tools.exe)
 app.post('/update-status', async (req, res) => {
     const { username, ip, status, version } = req.body;
     
@@ -161,7 +201,7 @@ app.post('/update-status', async (req, res) => {
     }
 
     try {
-        // SPRAWDŹ BANY - zarówno IP jak i username
+        // SPRAWDŹ BANY
         const ipBanned = BAN_LIST.has(ip);
         const userBanned = Array.from(BAN_LIST.values()).some(ban => ban.username === username);
         
@@ -175,14 +215,15 @@ app.post('/update-status', async (req, res) => {
             });
         }
 
-        // Sprawdź czy użytkownik istnieje w bazie
-        const { data: userExists } = await supabase
-            .from('users')
-            .select('username')
-            .eq('username', username)
-            .single();
+        // Sprawdź czy użytkownik istnieje w bazie MySQL
+        const connection = await getConnection();
+        const [users] = await connection.execute(
+            'SELECT username FROM users WHERE username = ?',
+            [username]
+        );
+        await connection.end();
 
-        if (!userExists) {
+        if (users.length === 0) {
             console.log(`🗑️ Konto usunięte: ${username}`);
             return res.json({ 
                 success: false, 
@@ -191,7 +232,7 @@ app.post('/update-status', async (req, res) => {
             });
         }
 
-        // Aktualizuj status z aktualnym timestamp
+        // Aktualizuj status
         const userData = {
             username,
             ip,
@@ -220,16 +261,13 @@ app.post('/update-status', async (req, res) => {
     }
 });
 
-// Lista statusów online (dla Admin Panel)
 app.get('/status', async (req, res) => {
     try {
         const now = Date.now();
-        const OFFLINE_THRESHOLD = 15 * 1000; // 15 sekund
+        const OFFLINE_THRESHOLD = 15 * 1000;
         
-        // Sprawdź które statusy są nieaktualne
         for (let [username, userData] of activeUsers.entries()) {
             if (now - userData.timestamp > OFFLINE_THRESHOLD) {
-                // Oznacz jako offline
                 userData.status = 'offline';
                 console.log(`⚪ Automatycznie oznaczono jako offline: ${username}`);
             }
@@ -259,7 +297,6 @@ app.get('/status', async (req, res) => {
 
 // ==================== SYSTEM BANÓW ====================
 
-// Banowanie IP/użytkownika
 app.post('/ban-ip', async (req, res) => {
     const { ip, reason, username, admin } = req.body;
     
@@ -281,7 +318,6 @@ app.post('/ban-ip', async (req, res) => {
 
         BAN_LIST.set(ip, banData);
         
-        // Usuń z aktywnych użytkowników jeśli jest online
         if (username && activeUsers.has(username)) {
             activeUsers.delete(username);
             console.log(`🚫 Usunięto z aktywnych: ${username} (zbanowany)`);
@@ -302,7 +338,6 @@ app.post('/ban-ip', async (req, res) => {
     }
 });
 
-// Odbanowanie IP
 app.post('/unban-ip', async (req, res) => {
     const { ip } = req.body;
     
@@ -333,7 +368,6 @@ app.post('/unban-ip', async (req, res) => {
     }
 });
 
-// Lista banów
 app.get('/bans', async (req, res) => {
     try {
         const bansArray = Array.from(BAN_LIST.entries()).map(([ip, data]) => ({
@@ -360,7 +394,6 @@ app.get('/bans', async (req, res) => {
 
 // ==================== SYSTEM UŻYTKOWNIKÓW ====================
 
-// Rejestracja użytkownika
 app.post('/save-log', async (req, res) => {
     console.log('📝 Rejestracja:', req.body.username);
     
@@ -375,14 +408,16 @@ app.post('/save-log', async (req, res) => {
             });
         }
 
-        // Sprawdź czy użytkownik istnieje
-        const { data: istnieje } = await supabase
-            .from('users')
-            .select('username')
-            .eq('username', username)
-            .single();
+        const connection = await getConnection();
 
-        if (istnieje) {
+        // Sprawdź czy użytkownik istnieje
+        const [existingUsers] = await connection.execute(
+            'SELECT username FROM users WHERE username = ?',
+            [username]
+        );
+
+        if (existingUsers.length > 0) {
+            await connection.end();
             return res.status(409).json({ 
                 success: false, 
                 message: 'Ta nazwa użytkownika jest już zajęta' 
@@ -390,25 +425,12 @@ app.post('/save-log', async (req, res) => {
         }
 
         // Dodaj użytkownika
-        const { error } = await supabase
-            .from('users')
-            .insert([
-                { 
-                    username: username, 
-                    password: password, 
-                    ip: ip,
-                    version: '2.0',
-                    created_at: new Date().toISOString()
-                }
-            ]);
+        await connection.execute(
+            'INSERT INTO users (username, password, ip, version, created_at) VALUES (?, ?, ?, ?, ?)',
+            [username, password, ip, '2.0', new Date().toISOString()]
+        );
 
-        if (error) {
-            console.error('Błąd bazy:', error);
-            return res.status(500).json({ 
-                success: false, 
-                message: 'Błąd bazy danych' 
-            });
-        }
+        await connection.end();
 
         res.json({ 
             success: true, 
@@ -416,7 +438,7 @@ app.post('/save-log', async (req, res) => {
         });
         
     } catch (error) {
-        console.error('Błąd:', error);
+        console.error('Błąd rejestracji:', error);
         res.status(500).json({ 
             success: false, 
             message: 'Błąd serwera' 
@@ -424,20 +446,18 @@ app.post('/save-log', async (req, res) => {
     }
 });
 
-// Lista użytkowników (dla logowania)
 app.get('/check-logs', async (req, res) => {
     try {
-        const { data, error } = await supabase
-            .from('users')
-            .select('*');
-
-        if (error) throw error;
+        const connection = await getConnection();
+        const [users] = await connection.execute('SELECT * FROM users');
+        await connection.end();
 
         res.json({ 
             success: true, 
-            users: data || [] 
+            users: users || [] 
         });
     } catch (error) {
+        console.error('Błąd check-logs:', error);
         res.status(500).json({ 
             success: false, 
             error: error.message 
@@ -445,20 +465,17 @@ app.get('/check-logs', async (req, res) => {
     }
 });
 
-// Lista użytkowników (dla Admin Panel)
 app.get('/users', async (req, res) => {
     try {
-        const { data: users, error } = await supabase
-            .from('users')
-            .select('*')
-            .order('created_at', { ascending: false });
-
-        if (error) throw error;
+        const connection = await getConnection();
+        const [users] = await connection.execute(
+            'SELECT * FROM users ORDER BY created_at DESC'
+        );
+        await connection.end();
 
         const now = Date.now();
-        const ONLINE_THRESHOLD = 15 * 1000; // 15 sekund
+        const ONLINE_THRESHOLD = 15 * 1000;
 
-        // Dodaj status online/offline i ban
         const usersWithStatus = (users || []).map(user => {
             const userActive = activeUsers.get(user.username);
             const isOnline = userActive && (now - userActive.timestamp < ONLINE_THRESHOLD);
@@ -484,6 +501,7 @@ app.get('/users', async (req, res) => {
         });
 
     } catch (error) {
+        console.error('Błąd users:', error);
         res.status(500).json({ 
             success: false, 
             error: error.message 
@@ -491,32 +509,40 @@ app.get('/users', async (req, res) => {
     }
 });
 
-// Usuwanie użytkownika + automatyczny ban
 app.delete('/users/:username', async (req, res) => {
     const username = req.params.username;
     
     try {
-        // Znajdź użytkownika aby pobrać IP
-        const { data: user, error: findError } = await supabase
-            .from('users')
-            .select('ip')
-            .eq('username', username)
-            .single();
+        const connection = await getConnection();
 
-        if (findError) throw findError;
+        // Znajdź użytkownika aby pobrać IP
+        const [users] = await connection.execute(
+            'SELECT ip FROM users WHERE username = ?',
+            [username]
+        );
+
+        if (users.length === 0) {
+            await connection.end();
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Użytkownik nie znaleziony' 
+            });
+        }
+
+        const userIP = users[0].ip;
 
         // Usuń użytkownika
-        const { error: deleteError } = await supabase
-            .from('users')
-            .delete()
-            .eq('username', username);
+        await connection.execute(
+            'DELETE FROM users WHERE username = ?',
+            [username]
+        );
 
-        if (deleteError) throw deleteError;
+        await connection.end();
 
         // Automatycznie zbanuj IP
-        if (user && user.ip) {
-            BAN_LIST.set(user.ip, {
-                ip: user.ip,
+        if (userIP) {
+            BAN_LIST.set(userIP, {
+                ip: userIP,
                 username: username,
                 reason: 'Konto usunięte przez administratora',
                 admin: 'system',
@@ -526,7 +552,6 @@ app.delete('/users/:username', async (req, res) => {
 
         // Usuń z aktywnych użytkowników
         activeUsers.delete(username);
-        // Usuń też wiadomości użytkownika
         USER_MESSAGES.delete(username);
 
         console.log(`🗑️ Usunięto użytkownika: ${username}`);
@@ -537,6 +562,7 @@ app.delete('/users/:username', async (req, res) => {
         });
 
     } catch (error) {
+        console.error('Błąd usuwania użytkownika:', error);
         res.status(500).json({ 
             success: false, 
             error: error.message 
@@ -552,9 +578,10 @@ app.get('/', (req, res) => {
     );
     
     res.json({ 
-        message: '🚀 Social Tools API działa!', 
+        message: '🚀 Social Tools API z MySQL działa!', 
         status: 'online',
         version: '2.0',
+        database: 'MySQL Aiven',
         stats: {
             active_users: onlineUsers.length,
             total_users: activeUsers.size,
@@ -578,10 +605,10 @@ app.get('/', (req, res) => {
     });
 });
 
-// Czyszczenie starych statusów co 30 sekund
+// Czyszczenie starych statusów
 setInterval(() => {
     const now = Date.now();
-    const CLEANUP_THRESHOLD = 5 * 60 * 1000; // 5 minut
+    const CLEANUP_THRESHOLD = 5 * 60 * 1000;
     
     let cleanedCount = 0;
     for (let [username, userData] of activeUsers.entries()) {
@@ -596,7 +623,7 @@ setInterval(() => {
     }
 }, 30000);
 
-// Automatyczne czyszczenie przeczytanych wiadomości co godzinę
+// Automatyczne czyszczenie przeczytanych wiadomości
 setInterval(() => {
     let cleanedCount = 0;
     for (let [username, messages] of USER_MESSAGES.entries()) {
@@ -611,9 +638,19 @@ setInterval(() => {
     }
 }, 60 * 60 * 1000);
 
+// URUCHOMIENIE SERWERA
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => {
-    console.log(`🚀 Serwer działa na porcie ${PORT}`);
-    console.log(`✅ Wszystkie endpointy aktywne!`);
-    console.log(`📊 System: Bany: ${BAN_LIST.size}, Aktywni: ${activeUsers.size}, Wiadomości: ${USER_MESSAGES.size}`);
-});
+
+async function startServer() {
+    // Najpierw zainicjuj bazę danych
+    await initializeDatabase();
+    
+    // Potem uruchom serwer
+    app.listen(PORT, () => {
+        console.log(`🚀 Serwer działa na porcie ${PORT}`);
+        console.log(`✅ MySQL Aiven podłączony!`);
+        console.log(`📊 System: Bany: ${BAN_LIST.size}, Aktywni: ${activeUsers.size}, Wiadomości: ${USER_MESSAGES.size}`);
+    });
+}
+
+startServer().catch(console.error);
