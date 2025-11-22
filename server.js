@@ -16,7 +16,7 @@ app.options('*', cors());
 // PARSOWANIE JSON
 app.use(express.json());
 
-// KONFIGURACJA MYSQL AIVEN - ZMIENNE ŚRODOWISKOWE
+// KONFIGURACJA MYSQL AIVEN
 const dbConfig = {
     host: process.env.DB_HOST,
     port: process.env.DB_PORT,
@@ -27,18 +27,18 @@ const dbConfig = {
         rejectUnauthorized: false
     },
     connectTimeout: 60000,
-    acquireTimeout: 60000,
-    timeout: 60000
+    charset: 'utf8mb4'
 };
 
 // FUNKCJA DO POŁĄCZENIA Z BAZĄ
 async function getConnection() {
     try {
+        console.log('🔄 Próba połączenia z MySQL...');
         const connection = await mysql.createConnection(dbConfig);
         console.log('✅ Połączono z MySQL Aiven');
         return connection;
     } catch (error) {
-        console.error('❌ Błąd połączenia z MySQL:', error);
+        console.error('❌ BŁĄD POŁĄCZENIA MYSQL:', error.message);
         throw error;
     }
 }
@@ -52,9 +52,9 @@ const USER_MESSAGES = new Map();
 async function initializeDatabase() {
     let connection;
     try {
+        console.log('🔄 Inicjalizacja bazy danych...');
         connection = await getConnection();
         
-        // Tworzenie tabeli users jeśli nie istnieje
         await connection.execute(`
             CREATE TABLE IF NOT EXISTS users (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -71,7 +71,7 @@ async function initializeDatabase() {
         console.log('✅ Tabela users gotowa');
         await connection.end();
     } catch (error) {
-        console.error('❌ Błąd inicjalizacji bazy danych:', error);
+        console.error('❌ Błąd inicjalizacji bazy danych:', error.message);
         if (connection) await connection.end();
     }
 }
@@ -434,16 +434,18 @@ app.post('/save-log', async (req, res) => {
 
         await connection.end();
 
+        console.log('✅ Użytkownik zarejestrowany:', username);
+        
         res.json({ 
             success: true, 
             message: 'Konto utworzone pomyślnie!' 
         });
         
     } catch (error) {
-        console.error('Błąd rejestracji:', error);
+        console.error('💥 Błąd rejestracji:', error.message);
         res.status(500).json({ 
             success: false, 
-            message: 'Błąd serwera' 
+            message: 'Błąd połączenia z bazą danych' 
         });
     }
 });
@@ -572,6 +574,49 @@ app.delete('/users/:username', async (req, res) => {
     }
 });
 
+// TEST ENDPOINT DLA BAZY DANYCH
+app.get('/test-db', async (req, res) => {
+    try {
+        const connection = await getConnection();
+        const [rows] = await connection.execute('SELECT NOW() as current_time');
+        await connection.end();
+        
+        res.json({ 
+            success: true, 
+            message: 'Database connection OK',
+            time: rows[0].current_time
+        });
+    } catch (error) {
+        res.json({ 
+            success: false, 
+            message: 'Database connection FAILED',
+            error: error.message 
+        });
+    }
+});
+
+// HEALTH CHECK
+app.get('/health', async (req, res) => {
+    try {
+        const connection = await getConnection();
+        const [result] = await connection.execute('SELECT 1 as test');
+        await connection.end();
+        
+        res.json({ 
+            success: true, 
+            message: 'Database connected',
+            database: 'OK',
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        res.json({ 
+            success: false, 
+            message: 'Database connection failed',
+            error: error.message 
+        });
+    }
+});
+
 // Endpoint główny
 app.get('/', (req, res) => {
     const now = Date.now();
@@ -591,6 +636,8 @@ app.get('/', (req, res) => {
             total_messages: Array.from(USER_MESSAGES.values()).flat().length
         },
         endpoints: {
+            'GET /health': 'Health check bazy danych',
+            'GET /test-db': 'Test połączenia z bazą',
             'POST /save-log': 'Rejestracja użytkownika',
             'GET /check-logs': 'Lista użytkowników (login)',
             'GET /users': 'Lista użytkowników (admin)',
@@ -644,12 +691,19 @@ setInterval(() => {
 const PORT = process.env.PORT || 10000;
 
 async function startServer() {
+    console.log('🚀 Uruchamianie serwera...');
+    console.log('📊 Konfiguracja bazy:', {
+        host: process.env.DB_HOST,
+        port: process.env.DB_PORT,
+        user: process.env.DB_USER,
+        database: process.env.DB_NAME
+    });
+    
     await initializeDatabase();
     
     app.listen(PORT, () => {
-        console.log(`🚀 Serwer działa na porcie ${PORT}`);
-        console.log(`✅ MySQL Aiven podłączony!`);
-        console.log(`📊 System: Bany: ${BAN_LIST.size}, Aktywni: ${activeUsers.size}, Wiadomości: ${USER_MESSAGES.size}`);
+        console.log(`🎉 Serwer działa na porcie ${PORT}`);
+        console.log(`📊 System: Bany: ${BAN_LIST.size}, Aktywni: ${activeUsers.size}`);
     });
 }
 
