@@ -426,10 +426,10 @@ app.post('/save-log', async (req, res) => {
             });
         }
 
-        // Dodaj użytkownika
+        // POPRAWIONE: Użyj MySQL CURRENT_TIMESTAMP zamiast ręcznej daty
         await connection.execute(
-            'INSERT INTO users (username, password, ip, version, created_at) VALUES (?, ?, ?, ?, ?)',
-            [username, password, ip, '2.0', new Date().toISOString()]
+            'INSERT INTO users (username, password, ip, version) VALUES (?, ?, ?, ?)',
+            [username, password, ip, '2.0']
         );
 
         await connection.end();
