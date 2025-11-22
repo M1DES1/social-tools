@@ -1,6 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const mysql = require('mysql2/promise');
+require('dotenv').config();
+
 const app = express();
 
 // KONFIGURACJA CORS
@@ -14,13 +16,13 @@ app.options('*', cors());
 // PARSOWANIE JSON
 app.use(express.json());
 
-// KONFIGURACJA MYSQL AIVEN - TWOJE DANE
+// KONFIGURACJA MYSQL AIVEN - ZMIENNE ŚRODOWISKOWE
 const dbConfig = {
-    host: 'mysql-13cfe9d1-w0bise-59dc.c.aivencloud.com',
-    port: 22831,
-    user: 'avnadmin',
-    password: 'AVNS_G5ODOqQ6kaZu9o86Cd5',
-    database: 'defaultdb',
+    host: process.env.DB_HOST,
+    port: process.env.DB_PORT,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
     ssl: {
         rejectUnauthorized: false
     },
@@ -79,7 +81,7 @@ async function initializeDatabase() {
 app.post('/send-message', async (req, res) => {
     const { to_username, message, title, from_admin } = req.body;
     
-    console.log(`📨 Próba wysłania wiadomości do: ${to_username}`, req.body);
+    console.log(`📨 Próba wysłania wiadomości do: ${to_username}`);
     
     if (!to_username || !message) {
         return res.status(400).json({ 
@@ -642,10 +644,8 @@ setInterval(() => {
 const PORT = process.env.PORT || 10000;
 
 async function startServer() {
-    // Najpierw zainicjuj bazę danych
     await initializeDatabase();
     
-    // Potem uruchom serwer
     app.listen(PORT, () => {
         console.log(`🚀 Serwer działa na porcie ${PORT}`);
         console.log(`✅ MySQL Aiven podłączony!`);
