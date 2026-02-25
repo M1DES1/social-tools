@@ -21,18 +21,8 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-# ==== POPRAWIONA KONFIGURACJA CORS - OBSŁUGA PREFLIGHT ====
+# ==== POPRAWIONA KONFIGURACJA CORS - BEZ DUPLIKACJI ====
 CORS(app, origins="*", supports_credentials=True, allow_headers=["Content-Type", "Authorization", "X-Requested-With"])
-
-# Dodatkowe nagłówki CORS dla pewności
-@app.after_request
-def after_request(response):
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-    response.headers.add('Access-Control-Allow-Credentials', 'true')
-    response.headers.add('Access-Control-Max-Age', '86400')  # Cache preflight na 24h
-    return response
 
 # ==== GLOBALNE ZMIENNE DLA ATAKÓW ====
 active_attacks = {}
@@ -425,6 +415,6 @@ if __name__ == "__main__":
     print(f"🚀 Serwer DDoS uruchomiony na porcie {port}")
     print(f"📡 Endpoint: http://localhost:{port}/api/attack/start")
     print(f"🌐 Publiczny adres: https://social-tools-ddos.onrender.com")
-    print(f"🔓 CORS: Zezwolono na wszystkie domeny z pełną obsługą preflight")
+    print(f"🔓 CORS: Skonfigurowany prawidłowo (bez duplikacji nagłówków)")
     
     app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
