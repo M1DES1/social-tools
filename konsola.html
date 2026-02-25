@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Konsola - Social Tools</title>
+    <link rel="icon" href="https://github.com/M1DES1/social-tools/raw/refs/heads/main/cwel.ico" type="image/x-icon">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Dodatkowe style tylko dla konsoli */
+        .console-container {
+            max-width: 900px;
+            margin: 20px auto;
+            background: #1e1e1e;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        .console-header {
+            background: #2d2d2d;
+            color: #fff;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #444;
+        }
+        .console-header h3 {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 400;
+            color: #e0e0e0;
+        }
+        .console-status {
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: #3a3a3a;
+        }
+        .status-online { color: #4caf50; }
+        .status-offline { color: #f44336; }
+        .console-output {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 14px;
+            padding: 20px;
+            min-height: 400px;
+            max-height: 500px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            border-bottom: 1px solid #333;
+        }
+        .console-output .prompt {
+            color: #4ec9b0;
+            margin-right: 10px;
+        }
+        .console-output .success { color: #6a9955; }
+        .console-output .error { color: #f48771; }
+        .console-output .info { color: #9cdcfe; }
+        .console-output .warning { color: #dcdcaa; }
+        .console-input-area {
+            background: #2d2d2d;
+            padding: 15px 20px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .console-prompt {
+            color: #4ec9b0;
+            font-family: monospace;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .console-input {
+            flex: 1;
+            background: #3c3c3c;
+            border: 1px solid #555;
+            color: #fff;
+            padding: 10px 15px;
+            border-radius: 4px;
+            font-family: 'Consolas', monospace;
+            font-size: 14px;
+            outline: none;
+        }
+        .console-input:focus {
+            border-color: #4ec9b0;
+        }
+        .console-btn {
+            background: #0e639c;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+        .console-btn:hover {
+            background: #1177bb;
+        }
+        .console-btn.secondary {
+            background: #4a4a4a;
+        }
+        .console-btn.secondary:hover {
+            background: #5a5a5a;
+        }
+        .command-hint {
+            padding: 8px 20px;
+            background: #2a2a2a;
+            color: #999;
+            font-size: 12px;
+            border-top: 1px solid #333;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .command-hint span {
+            color: #4ec9b0;
+            cursor: pointer;
+        }
+        .command-hint span:hover {
+            text-decoration: underline;
+        }
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .feature-card {
+            background: #f5f5f5;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .feature-card h4 {
+            margin: 0 0 10px 0;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .server-info {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px 20px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .server-url {
+            background: #fff;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 14px;
+            border: 1px solid #bdbdbd;
+        }
+        .copy-btn {
+            background: none;
+            border: 1px solid #2196f3;
+            color: #2196f3;
+            padding: 5px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            width: auto;
+            margin-left: 10px;
+        }
+        .copy-btn:hover {
+            background: #2196f3;
+            color: white;
+        }
+        @media (max-width: 768px) {
+            .console-input-area {
+                flex-wrap: wrap;
+            }
+            .console-btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="logo">
+            <h2><a href="index.html" style="color: inherit; text-decoration: none;">Social Tools</a></h2>
+        </div>
+        <nav class="nav" id="nav">
+            <!-- Wypełniane przez JavaScript -->
+        </nav>
+    </header>
+
+    <div class="container" style="max-width: 1000px;">
+        <h1>🖥️ Konsola Zarządzania</h1>
+        <p class="subtitle">Połączenie z serwerem Python w Codespace</p>
+
+        <!-- Informacje o serwerze -->
+        <div class="server-info" id="serverInfo">
+            <div>
+                <strong>🌐 Serwer Codespace:</strong>
+                <span class="server-url" id="serverUrl">https://scaling-space-trout-r4g6g46j4g9r25xr5-5000.app.github.dev</span>
+                <button class="copy-btn" onclick="copyServerUrl()">📋 Kopiuj</button>
+            </div>
+            <div>
+                <strong>Status:</strong> <span id="serverStatus" class="status-offline">🔴 Sprawdzanie...</span>
+            </div>
+        </div>
+
+        <!-- Szybkie akcje -->
+        <div class="features-grid">
+            <div class="feature-card">
+                <h4>🔍 Skanowanie sieci</h4>
+                <p>Skanuj lokalną sieć w poszukiwaniu aktywnych hostów</p>
+                <button class="console-btn" style="width: auto;" onclick="executeQuickCommand('scan')">Skanuj teraz</button>
+            </div>
+            <div class="feature-card">
+                <h4>📋 Lista hostów</h4>
+                <p>Pokaż znalezione hosty i ich status</p>
+                <button class="console-btn" style="width: auto;" onclick="executeQuickCommand('hosts')">Pokaż hosty</button>
+            </div>
+            <div class="feature-card">
+                <h4>📨 Test msgbox</h4>
+                <p>Przetestuj wysyłanie wiadomości na wszystkie hosty</p>
+                <button class="console-btn" style="width: auto;" onclick="executeQuickCommand('test_msgbox')">Testuj</button>
+            </div>
+            <div class="feature-card">
+                <h4>⚡ Status serwera</h4>
+                <p>Pokaż informacje o serwerze</p>
+                <button class="console-btn" style="width: auto;" onclick="executeQuickCommand('status')">Status</button>
+            </div>
+        </div>
+
+        <!-- Główna konsola -->
+        <div class="console-container">
+            <div class="console-header">
+                <h3>🔧 Konsola interaktywna - Python Backend</h3>
+                <div class="console-status" id="consoleStatus">Status: <span class="status-offline">Rozłączony</span></div>
+            </div>
+            
+            <!-- Obszar wyjścia konsoli -->
+            <div class="console-output" id="consoleOutput">
+                <span class="prompt">$</span> Witaj w konsoli Social Tools!<br>
+                <span class="prompt">$</span> Połączono z serwerem Python w Codespace.<br>
+                <span class="prompt">$</span> Wpisz 'help' aby zobaczyć dostępne komendy.<br>
+                <span class="prompt">$</span> Użyj 'scan' do skanowania sieci.<br>
+                <span class="prompt">$</span>---<br>
+            </div>
+
+            <!-- Obszar wprowadzania komend -->
+            <div class="console-input-area">
+                <span class="console-prompt">$></span>
+                <input type="text" class="console-input" id="commandInput" placeholder="Wpisz komendę... (np. scan, hosts, status)" onkeypress="handleKeyPress(event)">
+                <button class="console-btn" onclick="executeCommand()">Wykonaj</button>
+                <button class="console-btn secondary" onclick="clearConsole()">Wyczyść</button>
+            </div>
+
+            <!-- Podpowiedzi komend -->
+            <div class="command-hint">
+                <span onclick="insertCommand('scan')">scan</span>
+                <span onclick="insertCommand('hosts')">hosts</span>
+                <span onclick="insertCommand('status')">status</span>
+                <span onclick="insertCommand('test_msgbox')">test_msgbox</span>
+                <span onclick="insertCommand('attacks')">attacks</span>
+                <span onclick="insertCommand('get_base')">get_base</span>
+                <span onclick="insertCommand('help')">help</span>
+            </div>
+        </div>
+
+        <!-- Informacje o formacie komend -->
+        <div style="margin-top: 20px; background: #fff3e0; padding: 15px; border-radius: 8px; border-left: 4px solid #ff9800;">
+            <h4 style="margin: 0 0 10px 0;">📝 Format komend z parametrami:</h4>
+            <code style="background: #fff; padding: 5px; display: block; margin: 5px 0;">
+                send_msgbox ip='192.168.1.100' message='Test' title='Wiadomość'
+            </code>
+            <code style="background: #fff; padding: 5px; display: block; margin: 5px 0;">
+                attack_start url='http://example.com' threads=100
+            </code>
+            <code style="background: #fff; padding: 5px; display: block; margin: 5px 0;">
+                set_base base='192.168.1.'
+            </code>
+        </div>
+    </div>
+
+    <script>
+        // Konfiguracja - adres Twojego serwera Python w Codespace
+        const API_BASE_URL = 'https://scaling-space-trout-r4g6g46j4g9r25xr5-5000.app.github.dev';
+        const API_URL = API_BASE_URL + '/api';
+
+        let commandHistory = [];
+        let historyIndex = -1;
+
+        // Sprawdzenie czy użytkownik jest zalogowany
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentUser = localStorage.getItem('currentUser');
+            const nav = document.getElementById('nav');
+            
+            if (currentUser) {
+                nav.innerHTML = `
+                    <span class="welcome-text">Witaj, ${currentUser}!</span>
+                    <a href="download.html" class="nav-link">Pobierz</a>
+                    <a href="konsola.html" class="nav-link" style="background: #667eea; color: white;">Konsola</a>
+                    <a href="#" class="nav-link" onclick="logout()">Wyloguj</a>
+                `;
+                checkServerStatus();
+            } else {
+                // Niezalogowany - przekieruj do logowania
+                window.location.href = 'login.html';
+            }
+        });
+
+        // Funkcja wylogowania
+        function logout() {
+            localStorage.removeItem('currentUser');
+            window.location.href = 'index.html';
+        }
+
+        // Kopiowanie URL serwera
+        function copyServerUrl() {
+            const url = document.getElementById('serverUrl').textContent;
+            navigator.clipboard.writeText(url).then(() => {
+                alert('URL skopiowany do schowka!');
+            });
+        }
+
+        // Sprawdzenie statusu serwera
+        async function checkServerStatus() {
+            const statusEl = document.getElementById('serverStatus');
+            const consoleStatusEl = document.querySelector('#consoleStatus span');
+            
+            try {
+                const response = await fetch(`${API_URL}/status`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    statusEl.innerHTML = '🟢 Online';
+                    statusEl.className = 'status-online';
+                    consoleStatusEl.innerHTML = 'Połączony';
+                    consoleStatusEl.className = 'status-online';
+                    addToConsole('✅ Połączono z serwerem Python', 'success');
+                } else {
+                    throw new Error('Serwer nie odpowiada');
+                }
+            } catch (error) {
+                statusEl.innerHTML = '🔴 Offline';
+                statusEl.className = 'status-offline';
+                consoleStatusEl.innerHTML = 'Rozłączony';
+                consoleStatusEl.className = 'status-offline';
+                addToConsole('❌ Błąd połączenia z serwerem. Upewnij się, że serwer Python działa w Codespace.', 'error');
+            }
+        }
+
+        // Wykonanie szybkiej komendy z przycisku
+        function executeQuickCommand(command) {
+            document.getElementById('commandInput').value = command;
+            executeCommand();
+        }
+
+        // Wstawienie komendy do inputa
+        function insertCommand(cmd) {
+            document.getElementById('commandInput').value = cmd;
+            document.getElementById('commandInput').focus();
+        }
+
+        // Obsługa klawisza Enter
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                executeCommand();
+            }
+        }
+
+        // Parsowanie parametrów z komendy
+        function parseCommandWithParams(input) {
+            const parts = input.trim().split(/\s+/);
+            const command = parts[0].toLowerCase();
+            const params = {};
+            
+            // Sprawdź czy są parametry w formacie klucz='wartość'
+            const paramRegex = /([a-zA-Z_]+)=['"]?([^'"]*)['"]?/g;
+            let match;
+            while ((match = paramRegex.exec(input)) !== null) {
+                params[match[1]] = match[2];
+            }
+            
+            return { command, params };
+        }
+
+        // Główna funkcja wykonująca komendę
+        async function executeCommand() {
+            const input = document.getElementById('commandInput').value.trim();
+            if (!input) return;
+
+            // Dodaj do historii
+            commandHistory.push(input);
+            historyIndex = commandHistory.length;
+
+            // Wyświetl wpisaną komendę
+            addToConsole(`> ${input}`, 'info');
+            
+            // Wyczyść input
+            document.getElementById('commandInput').value = '';
+
+            // Parsuj komendę i parametry
+            const { command, params } = parseCommandWithParams(input);
+
+            try {
+                // Wyślij komendę do API
+                const response = await fetch(`${API_URL}/command/execute`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        command: command,
+                        params: params
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    displayCommandResult(command, data);
+                } else {
+                    addToConsole(`❌ Błąd: ${data.error || 'Nieznany błąd'}`, 'error');
+                }
+            } catch (error) {
+                addToConsole(`❌ Błąd połączenia: ${error.message}`, 'error');
+                console.error('Błąd:', error);
+            }
+        }
+
+        // Wyświetlanie wyniku komendy
+        function displayCommandResult(command, data) {
+            switch(command) {
+                case 'scan':
+                    addToConsole(`✅ Skanowanie zakończone. Znaleziono hostów: ${data.hosts?.length || 0}`, 'success');
+                    if (data.hosts && data.hosts.length > 0) {
+                        addToConsole('📋 Lista hostów:', 'info');
+                        data.hosts.forEach((ip, index) => {
+                            addToConsole(`   ${index + 1}. ${ip}`, 'info');
+                        });
+                    }
+                    break;
+                    
+                case 'hosts':
+                    if (data.hosts && data.hosts.length > 0) {
+                        addToConsole(`📋 Znalezione hosty (${data.hosts.length}):`, 'info');
+                        data.hosts.forEach(host => {
+                            let status = host.is_router ? '🚀' : (host.is_server ? '🖥️' : '💻');
+                            addToConsole(`   ${status} ${host.ip} - ${host.ports || 'Brak info'}`, 'info');
+                        });
+                        addToConsole(`✅ Działające msgbox: ${data.working?.length || 0}`, 'success');
+                    } else {
+                        addToConsole('📭 Brak znalezionych hostów. Użyj komendy "scan" najpierw.', 'warning');
+                    }
+                    break;
+                    
+                case 'test_msgbox':
+                    if (data.results) {
+                        addToConsole(`✅ Test msgbox zakończony. Działających: ${data.results.working?.length || 0}`, 'success');
+                        if (data.results.working && data.results.working.length > 0) {
+                            addToConsole('📨 Działające IP:', 'info');
+                            data.results.working.forEach((ip, i) => {
+                                addToConsole(`   ${i+1}. ${ip}`, 'info');
+                            });
+                        }
+                    }
+                    break;
+                    
+                case 'status':
+                    addToConsole('📊 STATUS SERWERA:', 'info');
+                    addToConsole(`   • Wersja: ${data.version || '2.0'}`, 'info');
+                    addToConsole(`   • Znalezione hosty: ${data.hosts_found || 0}`, 'info');
+                    addToConsole(`   • Działające msgbox: ${data.working_ips || 0}`, 'info');
+                    addToConsole(`   • Aktywne ataki: ${data.active_attacks || 0}`, 'info');
+                    addToConsole(`   • Uptime: ${Math.floor(data.uptime / 60)} minut`, 'info');
+                    break;
+                    
+                case 'get_base':
+                    addToConsole(`🌐 Baza sieci: ${data.base || 'nieznana'}`, 'info');
+                    break;
+                    
+                case 'attacks':
+                    if (data.attacks && data.attacks.length > 0) {
+                        addToConsole(`⚔️ Aktywne ataki (${data.attacks.length}):`, 'warning');
+                        data.attacks.forEach(attack => {
+                            addToConsole(`   • ${attack.target} - ${Math.floor(attack.duration)}s`, 'warning');
+                        });
+                    } else {
+                        addToConsole('📭 Brak aktywnych ataków', 'info');
+                    }
+                    break;
+                    
+                case 'help':
+                    addToConsole('📚 DOSTĘPNE KOMENDY:', 'info');
+                    const commands = [
+                        'scan - Skanuj sieć',
+                        'hosts - Pokaż hosty',
+                        'test_msgbox - Testuj msgbox',
+                        'status - Status serwera',
+                        'get_base - Pobierz bazę sieci',
+                        'set_base base="192.168.1." - Ustaw bazę',
+                        'attacks - Lista ataków',
+                        'send_msgbox ip="192.168.1.100" message="Test" - Wyślij wiadomość',
+                        'attack_start url="http://example.com" threads=100 - Rozpocznij atak',
+                        'attack_status attack_id="id" - Status ataku',
+                        'attack_stop attack_id="id" - Zatrzymaj atak'
+                    ];
+                    commands.forEach(cmd => addToConsole(`   ${cmd}`, 'info'));
+                    break;
+                    
+                default:
+                    // Dla innych komend wyświetl surowe dane
+                    addToConsole(`✅ Komenda wykonana:`, 'success');
+                    addToConsole(JSON.stringify(data, null, 2), 'info');
+            }
+        }
+
+        // Dodanie tekstu do konsoli
+        function addToConsole(text, type = 'info') {
+            const output = document.getElementById('consoleOutput');
+            const lines = text.split('\n');
+            
+            lines.forEach(line => {
+                const lineDiv = document.createElement('div');
+                lineDiv.className = type;
+                lineDiv.innerHTML = line;
+                output.appendChild(lineDiv);
+            });
+            
+            // Przewiń na dół
+            output.scrollTop = output.scrollHeight;
+        }
+
+        // Czyszczenie konsoli
+        function clearConsole() {
+            const output = document.getElementById('consoleOutput');
+            output.innerHTML = '<span class="prompt">$</span> Konsola wyczyszczona.<br>';
+        }
+
+        // Nawigacja po historii komend (strzałki góra/dół)
+        document.getElementById('commandInput').addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (historyIndex > 0) {
+                    historyIndex--;
+                    this.value = commandHistory[historyIndex];
+                }
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (historyIndex < commandHistory.length - 1) {
+                    historyIndex++;
+                    this.value = commandHistory[historyIndex];
+                } else {
+                    historyIndex = commandHistory.length;
+                    this.value = '';
+                }
+            }
+        });
+
+        // Sprawdzaj status serwera co 30 sekund
+        setInterval(checkServerStatus, 30000);
+    </script>
+</body>
+</html>
