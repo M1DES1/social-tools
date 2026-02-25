@@ -71,18 +71,22 @@
         document.addEventListener('DOMContentLoaded', function() {
             const currentUser = localStorage.getItem('currentUser');
             if (currentUser) {
+           // Zmień linki w nagłówku jeśli użytkownik jest zalogowany
                 document.querySelector('.nav').innerHTML = `
+                    <span class="welcome-text">Witaj, ${currentUser}!</span>
+                    <a href="download.html" class="nav-link">Pobierz</a>
+                    <a href="#" class="nav-link" onclick="logout()">Wyloguj</a>
+
+
+
+                    
+// W index.html, w funkcji showDashboard(username)
+document.querySelector('.nav').innerHTML = `
     <span class="welcome-text">Witaj, ${username}!</span>
     <a href="download.html" class="nav-link">Pobierz</a>
     <a href="konsola.html" class="nav-link">Konsola</a>
     <a href="#" class="nav-link" onclick="logout()">Wyloguj</a>
 `;
-                // Zmień linki w nagłówku jeśli użytkownik jest zalogowany
-                document.querySelector('.nav').innerHTML = `
-                    <span class="welcome-text">Witaj, ${currentUser}!</span>
-                    <a href="download.html" class="nav-link">Pobierz</a>
-                    <a href="#" class="nav-link" onclick="logout()">Wyloguj</a>
-                `;
             }
         });
 
@@ -93,4 +97,5 @@
     </script>
 </body>
 </html>
+
 
