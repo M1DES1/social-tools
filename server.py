@@ -37,7 +37,7 @@ class Colors:
     BLUE = '\033[94m'
     END = '\033[0m'
 
-# ==== PRAWDZIWY ATAK DDoS KTÓRY WYWALA STRONY ====
+# ==== FUNKCJA ATAKU - TERAZ Z OBSŁUGĄ BŁĘDÓW ====
 def website_killer_attack(target_url, threads_count=200, attack_id=None):
     """Agresywny atak DDoS - wywala strony tak jak Twój exe"""
     
