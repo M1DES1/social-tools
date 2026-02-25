@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Konsola - Web Attack</title>
+    <title>Konsola - Web Attack (Test)</title>
     <link rel="icon" href="https://github.com/M1DES1/social-tools/raw/refs/heads/main/cwel.ico" type="image/x-icon">
     <link rel="stylesheet" href="style.css">
     <style>
+        /* (style pozostawiam bez zmian, są poprawne) */
         .attack-container {
             max-width: 700px;
             margin: 30px auto;
@@ -232,8 +233,8 @@
 
     <div class="attack-container">
         <div class="attack-header">
-            <h2>⚔️ WEB ATTACK</h2>
-            <p>Narzędzie do testowania wydajności serwerów</p>
+            <h2>⚔️ WEB ATTACK (TEST)</h2>
+            <p>Test połączenia z backendem Node.js</p>
         </div>
         
         <div class="attack-body">
@@ -300,7 +301,7 @@
     </div>
 
     <script>
-        // Konfiguracja - adres Twojego serwera Python w Codespace
+        // === KONFIGURACJA – TWOJ ADRES Z RENDER ===
         const API_BASE_URL = 'https://social-tools.onrender.com';
         const API_URL = API_BASE_URL + '/api';
 
@@ -308,7 +309,7 @@
         let statusInterval = null;
         let attackStartTime = null;
 
-        // Sprawdzenie czy użytkownik jest zalogowany
+        // Sprawdzenie czy użytkownik jest zalogowany (działa z Twoim backendem)
         document.addEventListener('DOMContentLoaded', function() {
             const currentUser = localStorage.getItem('currentUser');
             const nav = document.getElementById('nav');
@@ -338,22 +339,24 @@
             const badge = document.getElementById('serverBadge');
             
             try {
-                const response = await fetch(`${API_URL}/status`, {
+                // Próbujemy połączyć się z Twoim API
+                const response = await fetch(`${API_BASE_URL}`, {
                     method: 'GET',
                     headers: { 'Content-Type': 'application/json' }
                 });
                 
                 if (response.ok) {
+                    const data = await response.json();
                     badge.className = 'server-badge online';
-                    badge.innerHTML = '🟢 Serwer: Połączony z Codespace';
-                    addLog('✅ Połączono z serwerem', 'success');
+                    badge.innerHTML = `🟢 Serwer: Połączony (${data.message || 'OK'})`;
+                    addLog('✅ Połączono z serwerem backendu', 'success');
                 } else {
-                    throw new Error('Serwer nie odpowiada');
+                    throw new Error('Serwer nie odpowiada prawidłowo');
                 }
             } catch (error) {
                 badge.className = 'server-badge offline';
                 badge.innerHTML = '🔴 Serwer: Brak połączenia';
-                addLog('❌ Błąd połączenia z serwerem', 'error');
+                addLog('❌ Błąd połączenia z serwerem backendu', 'error');
             }
         }
 
@@ -377,9 +380,11 @@
             document.getElementById('startAttackBtn').disabled = true;
             document.getElementById('stopAttackBtn').disabled = false;
             
-            addLog(`🚀 Rozpoczynanie ataku na ${targetUrl} (${threads} wątków)...`, 'attack');
+            addLog(`🚀 Próba rozpoczęcia ataku na ${targetUrl} (${threads} wątków)...`, 'attack');
 
             try {
+                // UWAGA: Twój backend Node.js prawdopodobnie NIE MA tych endpointów
+                // To tylko test połączenia – dostaniesz błąd 404
                 const response = await fetch(`${API_URL}/attack/start`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -395,14 +400,12 @@
                     currentAttackId = data.attack_id;
                     attackStartTime = Date.now();
                     
-                    // Pokaż panel statusu
                     document.getElementById('statusPanel').style.display = 'block';
                     document.getElementById('attackId').textContent = data.attack_id;
                     document.getElementById('attackTarget').textContent = targetUrl;
                     
                     addLog(`✅ Atak rozpoczęty! ID: ${data.attack_id}`, 'success');
                     
-                    // Rozpocznij odświeżanie statusu
                     if (statusInterval) clearInterval(statusInterval);
                     statusInterval = setInterval(updateAttackStatus, 1000);
                 } else {
@@ -410,7 +413,7 @@
                     resetButtons();
                 }
             } catch (error) {
-                addLog(`❌ Błąd połączenia: ${error.message}`, 'error');
+                addLog(`❌ Błąd połączenia: ${error.message} – czy backend ma endpoint /api/attack/start?`, 'error');
                 resetButtons();
             }
         }
@@ -441,7 +444,6 @@
                 addLog(`❌ Błąd: ${error.message}`, 'error');
             }
 
-            // Czyść interwał i resetuj
             if (statusInterval) {
                 clearInterval(statusInterval);
                 statusInterval = null;
@@ -501,10 +503,8 @@
             logEntry.innerHTML = `<span class="log-time">[${time}]</span> <span style="color: ${color}">${message}</span>`;
             logPanel.appendChild(logEntry);
             
-            // Przewiń na dół
             logPanel.scrollTop = logPanel.scrollHeight;
             
-            // Ogranicz ilość logów
             if (logPanel.children.length > 50) {
                 logPanel.removeChild(logPanel.children[0]);
             }
