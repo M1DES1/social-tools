@@ -20,7 +20,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, origins=["https://socialtool.work.gd", "https://www.socialtool.work.gd"])
 
 # ==== GLOBALNE ZMIENNE DLA ATAKÓW ====
 active_attacks = {}
