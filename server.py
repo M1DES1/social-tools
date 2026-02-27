@@ -21,7 +21,8 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-# ==== POPRAWIONA KONFIGURACJA CORS - BEZ DUPLIKACJI ====
+# ==== POPRAWIONA KONFIGURACJA CORS - JUŻ BEZ RĘCZNEJ OBSŁUGI OPTIONS ====
+# To wystarczy - biblioteka sama obsłuży wszystkie zapytania OPTIONS i doda nagłówki
 CORS(app, origins="*", supports_credentials=True, allow_headers=["Content-Type", "Authorization", "X-Requested-With"])
 
 # ==== GLOBALNE ZMIENNE DLA ATAKÓW ====
@@ -37,7 +38,7 @@ class Colors:
     BLUE = '\033[94m'
     END = '\033[0m'
 
-# ==== FUNKCJA ATAKU - TERAZ Z OBSŁUGĄ BŁĘDÓW ====
+# ==== PRAWDZIWY ATAK DDoS KTÓRY WYWALA STRONY ====
 def website_killer_attack(target_url, threads_count=200, attack_id=None):
     """Agresywny atak DDoS - wywala strony tak jak Twój exe"""
     
@@ -213,13 +214,11 @@ def website_killer_attack(target_url, threads_count=200, attack_id=None):
     
     return attack_id
 
-# ==== ENDPOINTY API Z PEŁNĄ OBSŁUGĄ OPTIONS ====
+# ==== ENDPOINTY API - BEZ RĘCZNEJ OBSŁUGI OPTIONS ====
 
-@app.route('/api/status', methods=['GET', 'OPTIONS'])
+@app.route('/api/status', methods=['GET'])
 def status():
     """Status serwera DDoS"""
-    if request.method == 'OPTIONS':
-        return handle_preflight()
     return jsonify({
         "success": True,
         "status": "online",
@@ -227,12 +226,9 @@ def status():
         "total_requests": sum(s.get('requests', 0) for s in attack_stats.values())
     })
 
-@app.route('/api/attack/start', methods=['POST', 'OPTIONS'])
+@app.route('/api/attack/start', methods=['POST'])
 def start_attack():
     """Rozpoczyna agresywny atak DDoS"""
-    if request.method == 'OPTIONS':
-        return handle_preflight()
-    
     try:
         data = request.get_json()
         if not data:
@@ -263,12 +259,9 @@ def start_attack():
         logger.error(f"Błąd w start_attack: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
-@app.route('/api/attack/stop/<attack_id>', methods=['POST', 'OPTIONS'])
+@app.route('/api/attack/stop/<attack_id>', methods=['POST'])
 def stop_attack(attack_id):
     """Zatrzymuje atak"""
-    if request.method == 'OPTIONS':
-        return handle_preflight()
-    
     try:
         if attack_id in attack_stop_flags:
             attack_stop_flags[attack_id] = True
@@ -284,12 +277,9 @@ def stop_attack(attack_id):
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-@app.route('/api/attack/status/<attack_id>', methods=['GET', 'OPTIONS'])
+@app.route('/api/attack/status/<attack_id>', methods=['GET'])
 def attack_status(attack_id):
     """Status konkretnego ataku"""
-    if request.method == 'OPTIONS':
-        return handle_preflight()
-    
     try:
         if attack_id in attack_stats:
             stats = attack_stats[attack_id]
@@ -310,12 +300,9 @@ def attack_status(attack_id):
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-@app.route('/api/attacks', methods=['GET', 'OPTIONS'])
+@app.route('/api/attacks', methods=['GET'])
 def list_attacks():
     """Lista aktywnych ataków"""
-    if request.method == 'OPTIONS':
-        return handle_preflight()
-    
     attacks_list = []
     
     for attack_id in active_attacks:
@@ -338,11 +325,9 @@ def list_attacks():
         "attacks": attacks_list
     })
 
-@app.route('/', methods=['GET', 'OPTIONS'])
+@app.route('/', methods=['GET'])
 def index():
     """Strona główna serwera DDoS"""
-    if request.method == 'OPTIONS':
-        return handle_preflight()
     return jsonify({
         "name": "Social Tools DDoS Server",
         "version": "2.0",
@@ -355,17 +340,6 @@ def index():
             "GET /api/attacks": "Lista aktywnych ataków"
         }
     })
-
-# ==== FUNKCJA POMOCNICZA DLA PREFLIGHT ====
-def handle_preflight():
-    """Obsługuje zapytania OPTIONS (preflight) dla CORS"""
-    response = jsonify({'success': True})
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-    response.headers.add('Access-Control-Allow-Credentials', 'true')
-    response.headers.add('Access-Control-Max-Age', '86400')
-    return response, 200
 
 # ==== Czyszczenie starych ataków ====
 def cleanup_old_attacks():
@@ -404,7 +378,7 @@ if __name__ == "__main__":
     ║  • Do 500 wątków jednocześnie                              ║
     ║  • Rotacja User-Agent i cache busting                      ║
     ║  • Atak na wiele ścieżek jednocześnie                      ║
-    ║  • Pełna obsługa CORS i preflight requests                 ║
+    ║  • CORS w pełni automatyczny (bez ręcznej obsługi)         ║
     ╚════════════════════════════════════════════════════════════╝
     """)
     
@@ -415,6 +389,6 @@ if __name__ == "__main__":
     print(f"🚀 Serwer DDoS uruchomiony na porcie {port}")
     print(f"📡 Endpoint: http://localhost:{port}/api/attack/start")
     print(f"🌐 Publiczny adres: https://social-tools-ddos.onrender.com")
-    print(f"🔓 CORS: Skonfigurowany prawidłowo (bez duplikacji nagłówków)")
+    print(f"🔓 CORS: W pełni automatyczny - powinien działać z każdą domeną")
     
     app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
